@@ -43,7 +43,8 @@ public class ItemAdapter extends BaseAdapter {
     public void refresh() {
         shown.clear();
         for (Item it : all) {
-            if (!query.isEmpty() && !it.name.toLowerCase(Locale.getDefault()).contains(query)) continue;
+            if (!query.isEmpty() && !it.name.toLowerCase(Locale.getDefault()).contains(query)
+                    && !it.code.contains(query)) continue;
             if (onlyToOrder && it.toOrder() <= 0) continue;
             shown.add(it);
         }
@@ -74,9 +75,12 @@ public class ItemAdapter extends BaseAdapter {
         TextView order = v.findViewById(R.id.order);
 
         name.setText(it.name);
-        details.setText(ctx.getString(R.string.row_details,
-                Item.format(it.usage),
-                it.hasStock() ? Item.format(it.stock) : "—"));
+        String unit = it.unit.isEmpty() ? "" : " " + it.unit;
+        String text = ctx.getString(R.string.row_details,
+                Item.format(it.usage) + unit,
+                it.hasStock() ? Item.format(it.stock) + unit : "—");
+        if (!it.code.isEmpty()) text = it.code + "   •   " + text;
+        details.setText(text);
         if (!it.hasStock()) {
             order.setText("?");
             order.setTextColor(ctx.getColor(R.color.muted));

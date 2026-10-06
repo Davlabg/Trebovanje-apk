@@ -15,30 +15,28 @@ public final class XlsxWriter {
     public static void writeOrder(OutputStream out, List<Item> items, boolean onlyToOrder) throws IOException {
         StringBuilder rows = new StringBuilder();
         int r = 1;
-        rows.append(row(r++, true, "Artikal", "Nedeljna prodaja", "Stanje", "Poruciti"));
-        double total = 0;
+        rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti"));
         for (Item it : items) {
             double order = it.toOrder();
             if (onlyToOrder && order <= 0) continue;
-            total += order;
             rows.append("<row r=\"").append(r).append("\">")
-                    .append(strCell("A" + r, it.name, 0))
-                    .append(numCell("B" + r, it.usage))
-                    .append(it.stock == null ? "" : numCell("C" + r, it.stock))
-                    .append(it.stock == null ? "" : numCell("D" + r, order))
+                    .append(strCell("A" + r, it.code, 0))
+                    .append(strCell("B" + r, it.name, 0))
+                    .append(strCell("C" + r, it.unit, 0))
+                    .append(numCell("D" + r, it.usage))
+                    .append(it.stock == null ? "" : numCell("E" + r, it.stock))
+                    .append(it.stock == null ? "" : numCell("F" + r, order))
                     .append("</row>");
             r++;
         }
-        rows.append("<row r=\"").append(r).append("\">")
-                .append(strCell("A" + r, "UKUPNO", 1))
-                .append("<c r=\"D").append(r).append("\" s=\"1\"><v>").append(num(total)).append("</v></c>")
-                .append("</row>");
 
         String sheet = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?>"
                 + "<worksheet xmlns=\"http://schemas.openxmlformats.org/spreadsheetml/2006/main\">"
                 + "<sheetViews><sheetView workbookViewId=\"0\"><pane ySplit=\"1\" topLeftCell=\"A2\" activePane=\"bottomLeft\" state=\"frozen\"/></sheetView></sheetViews>"
-                + "<cols><col min=\"1\" max=\"1\" width=\"45\" customWidth=\"1\"/>"
-                + "<col min=\"2\" max=\"4\" width=\"17\" customWidth=\"1\"/></cols>"
+                + "<cols><col min=\"1\" max=\"1\" width=\"13\" customWidth=\"1\"/>"
+                + "<col min=\"2\" max=\"2\" width=\"34\" customWidth=\"1\"/>"
+                + "<col min=\"3\" max=\"3\" width=\"10\" customWidth=\"1\"/>"
+                + "<col min=\"4\" max=\"6\" width=\"17\" customWidth=\"1\"/></cols>"
                 + "<sheetData>" + rows + "</sheetData></worksheet>";
 
         try (ZipOutputStream zip = new ZipOutputStream(out)) {

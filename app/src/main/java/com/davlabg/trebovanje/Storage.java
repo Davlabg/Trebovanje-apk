@@ -44,7 +44,8 @@ public final class Storage {
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject o = arr.getJSONObject(i);
                     Double stock = o.has("stock") && !o.isNull("stock") ? o.getDouble("stock") : null;
-                    data.items.add(new Item(o.getString("name"), o.getDouble("usage"), stock));
+                    data.items.add(new Item(o.optString("code", ""), o.getString("name"),
+                            o.optString("unit", ""), o.getDouble("usage"), stock));
                 }
             }
         } catch (Exception e) {
@@ -60,7 +61,9 @@ public final class Storage {
             JSONArray arr = new JSONArray();
             for (Item it : data.items) {
                 JSONObject o = new JSONObject();
+                o.put("code", it.code);
                 o.put("name", it.name);
+                o.put("unit", it.unit);
                 o.put("usage", it.usage);
                 if (it.stock != null) o.put("stock", it.stock.doubleValue());
                 arr.put(o);

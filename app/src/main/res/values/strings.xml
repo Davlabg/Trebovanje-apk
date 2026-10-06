@@ -9,13 +9,14 @@
 
     <string name="search_hint">Pretraga artikla…</string>
     <string name="only_order">Prikaži samo artikle za poručivanje</string>
-    <string name="empty_text">Uvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (item), a nedeljna prodaja iz kolone S (usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.</string>
+    <string name="empty_text">Uvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (Item), a nedeljna prodaja iz kolone S (Usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.</string>
 
     <string name="col_item">Artikal</string>
     <string name="col_order">Poručiti</string>
     <string name="row_details">Prodaja/ned: %1$s   •   Stanje: %2$s</string>
     <string name="summary">Uneto stanje: %1$d / %2$d   •   Za poručivanje: %3$d</string>
 
+    <string name="dialog_code">Šifra: %1$s</string>
     <string name="dialog_usage">Nedeljna prodaja: %1$s</string>
     <string name="dialog_hint">Trenutno stanje</string>
     <string name="dialog_order">Poručiti: %1$s</string>

@@ -2,8 +2,10 @@
 
 Aplikacija učitava nedeljni izveštaj iz Excel-a (.xlsx) i za svaki artikal računa koliko treba poručiti za nedelju dana.
 
-- **Naziv artikla** – kolona **B** (`item`)
-- **Nedeljna prodaja** – kolona **S** (`usage`)
+- **Šifra artikla** – kolona **A** (`Item Code`)
+- **Naziv artikla** – kolona **B** (`Item`)
+- **Jedinica mere** – kolona **D** (`Manage Unit`)
+- **Nedeljna prodaja** – kolona **S** (`Usage`); izveštaj potrošnju beleži kao negativan broj, pa aplikacija okreće znak
 - **Trenutno stanje** – unosite u aplikaciji
 - **Poručiti** = nedeljna prodaja − stanje (zaokruženo naviše, najmanje 0)
 
@@ -16,7 +18,7 @@ Ako red zaglavlja sadrži nazive `item` i `usage`, aplikacija koristi te kolone 
 3. **Prikaži samo artikle za poručivanje** – filter liste.
 4. Meni → **Podeli porudžbinu** (Viber, WhatsApp, e-mail…) ili **Sačuvaj porudžbinu (Excel)**.
 
-Uneta stanja se čuvaju na telefonu. Pri uvozu novog izveštaja stanje se zadržava za artikle sa istim nazivom; **Obriši uneto stanje** kreće ispočetka.
+Uneta stanja se čuvaju na telefonu. Pri uvozu novog izveštaja stanje se zadržava za artikle sa istom šifrom; **Obriši uneto stanje** kreće ispočetka.
 
 ## Preuzimanje APK-a
 

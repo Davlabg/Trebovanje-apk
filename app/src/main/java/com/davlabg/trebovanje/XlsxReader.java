@@ -24,7 +24,9 @@ import javax.xml.parsers.DocumentBuilderFactory;
 /**
  * Cita .xlsx izvestaj bez spoljnih biblioteka.
  * Naziv artikla se uzima iz kolone B ("item"), nedeljna prodaja iz kolone S ("usage").
- * Ako red zaglavlja sadrzi "item" i "usage", koriste se te kolone cak i ako su pomerene.
+ * Ako red zaglavlja sadrzi "item" i "usage", koriste se te kolone cak i ako su pomerene;
+ * iz istog zaglavlja se prepoznaju i "item code" i "manage unit".
+ * Izvestaj potrosnju belezi kao odliv (negativno), pa se znak okrece.
  */
 public final class XlsxReader {
 
@@ -210,6 +212,10 @@ public final class XlsxReader {
         return raw;
     }
 
+    private static String trim(String s) {
+        return s == null ? "" : s.trim();
+    }
+
     private static List<Item> readSheet(byte[] data, List<String> shared) throws Exception {
         Element root = parse(data).getDocumentElement();
         Element sheetData = firstChild(root, "sheetData");
@@ -218,10 +224,14 @@ public final class XlsxReader {
 
         int nameCol = DEFAULT_NAME_COL;
         int usageCol = DEFAULT_USAGE_COL;
+        int codeCol = -1;
+        int unitCol = -1;
         boolean headerFound = false;
+        int negative = 0;
+        int positive = 0;
 
         for (Element row : children(sheetData, "row")) {
-            Map<Integer, String> cells = new HashMap<>();
+            Map<Integer, String> cells = new TreeMap<>();
             int pos = 0;
             for (Element c : children(row, "c")) {
                 int col = columnIndex(c.getAttribute("r"));
@@ -231,15 +241,19 @@ public final class XlsxReader {
             }
 
             if (!headerFound) {
-                int hName = -1, hUsage = -1;
+                int hName = -1, hUsage = -1, hCode = -1, hUnit = -1;
                 for (Map.Entry<Integer, String> e : cells.entrySet()) {
-                    String h = e.getValue().trim().toLowerCase(Locale.ROOT);
+                    String h = e.getValue().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
                     if (h.equals("item") && hName < 0) hName = e.getKey();
                     if (h.equals("usage") && hUsage < 0) hUsage = e.getKey();
+                    if (h.equals("item code") && hCode < 0) hCode = e.getKey();
+                    if ((h.equals("manage unit") || h.equals("unit")) && hUnit < 0) hUnit = e.getKey();
                 }
                 if (hName >= 0 && hUsage >= 0) {
                     nameCol = hName;
                     usageCol = hUsage;
+                    codeCol = hCode;
+                    unitCol = hUnit;
                     headerFound = true;
                     continue;
                 }
@@ -251,7 +265,21 @@ public final class XlsxReader {
             if (name.isEmpty()) continue;
             Double usage = Item.parse(cells.get(usageCol));
             if (usage == null) continue; // zaglavlje, prazni ili tekstualni redovi
-            items.add(new Item(name, usage, null));
+            if (usage < 0) negative++;
+            else if (usage > 0) positive++;
+            String code = codeCol >= 0 ? trim(cells.get(codeCol)) : "";
+            String unit = unitCol >= 0 ? trim(cells.get(unitCol)) : "";
+            items.add(new Item(code, name, unit, usage, null));
+        }
+
+        // Potrosnja zabelezena kao odliv (negativni brojevi): okreni znak, a retke pozitivne vrednosti
+        // (npr. povracaj) tretiraj kao potrosnju 0.
+        if (negative > positive) {
+            List<Item> flipped = new ArrayList<>(items.size());
+            for (Item it : items) {
+                flipped.add(new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, null));
+            }
+            return flipped;
         }
         return items;
     }

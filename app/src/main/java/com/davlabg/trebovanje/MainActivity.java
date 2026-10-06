@@ -142,12 +142,12 @@ public class MainActivity extends Activity {
     }
 
     private void applyImport(List<Item> items, String fileName) {
-        // Zadrzi vec uneta stanja za artikle sa istim nazivom.
+        // Zadrzi vec uneta stanja za iste artikle (po sifri, a ako je nema, po nazivu).
         Map<String, Double> old = new HashMap<>();
-        for (Item it : data.items) if (it.stock != null) old.put(it.name, it.stock);
+        for (Item it : data.items) if (it.stock != null) old.put(it.key(), it.stock);
         int kept = 0;
         for (Item it : items) {
-            Double s = old.get(it.name);
+            Double s = old.get(it.key());
             if (s != null) {
                 it.stock = s;
                 kept++;
@@ -184,7 +184,10 @@ public class MainActivity extends Activity {
         box.setPadding(pad, pad / 2, pad, 0);
 
         TextView info = new TextView(this);
-        info.setText(getString(R.string.dialog_usage, Item.format(it.usage)));
+        String unit = it.unit.isEmpty() ? "" : " " + it.unit;
+        String infoText = getString(R.string.dialog_usage, Item.format(it.usage) + unit);
+        if (!it.code.isEmpty()) infoText = getString(R.string.dialog_code, it.code) + "\n" + infoText;
+        info.setText(infoText);
         info.setTextSize(16);
         box.addView(info);
 
@@ -209,8 +212,8 @@ public class MainActivity extends Activity {
             if (s == null) {
                 preview.setText("");
             } else {
-                Item tmp = new Item(it.name, it.usage, s);
-                preview.setText(getString(R.string.dialog_order, Item.format(tmp.toOrder())));
+                Item tmp = new Item(it.code, it.name, it.unit, it.usage, s);
+                preview.setText(getString(R.string.dialog_order, Item.format(tmp.toOrder()) + unit));
             }
         };
         input.addTextChangedListener(new TextWatcher() {
@@ -340,7 +343,11 @@ public class MainActivity extends Activity {
         StringBuilder sb = new StringBuilder(getString(R.string.share_title, date)).append("\n\n");
         for (Item it : data.items) {
             double o = it.toOrder();
-            if (o > 0) sb.append(it.name).append(" – ").append(Item.format(o)).append('\n');
+            if (o <= 0) continue;
+            if (!it.code.isEmpty()) sb.append(it.code).append("  ");
+            sb.append(it.name.trim()).append(" – ").append(Item.format(o));
+            if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
+            sb.append('\n');
         }
         Intent send = new Intent(Intent.ACTION_SEND);
         send.setType("text/plain");

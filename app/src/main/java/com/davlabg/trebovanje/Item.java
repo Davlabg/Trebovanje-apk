@@ -1,16 +1,25 @@
 package com.davlabg.trebovanje;
 
-/** Jedan artikal: naziv (kolona B), nedeljna prodaja (kolona S) i uneto stanje. */
+/** Jedan artikal: sifra (kolona A), naziv (kolona B), jedinica mere (kolona D), nedeljna prodaja (kolona S) i uneto stanje. */
 public class Item {
+    public final String code;
     public final String name;
+    public final String unit;
     public final double usage;
     /** Trenutno stanje; null dok korisnik ne unese vrednost. */
     public Double stock;
 
-    public Item(String name, double usage, Double stock) {
+    public Item(String code, String name, String unit, double usage, Double stock) {
+        this.code = code == null ? "" : code;
         this.name = name;
+        this.unit = unit == null ? "" : unit;
         this.usage = usage;
         this.stock = stock;
+    }
+
+    /** Kljuc za prepoznavanje artikla pri novom uvozu (isti naziv moze imati vise sifara). */
+    public String key() {
+        return code.isEmpty() ? "n:" + name : "c:" + code;
     }
 
     public boolean hasStock() {
@@ -41,8 +50,12 @@ public class Item {
         String t = text.trim().replace(" ", "");
         if (t.isEmpty()) return null;
         if (t.contains(",") && t.contains(".")) {
-            // npr. 1.234,5 -> 1234.5
-            t = t.replace(".", "").replace(',', '.');
+            // Poslednji separator je decimalni: 1.234,5 -> 1234.5 i 1,234.5 -> 1234.5
+            if (t.lastIndexOf(',') > t.lastIndexOf('.')) {
+                t = t.replace(".", "").replace(',', '.');
+            } else {
+                t = t.replace(",", "");
+            }
         } else {
             t = t.replace(',', '.');
         }
