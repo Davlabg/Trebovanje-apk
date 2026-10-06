@@ -51,6 +51,12 @@ public final class Storage {
         } catch (Exception e) {
             // Ostecen fajl: pocinjemo od prazne liste.
         }
+        // Verzija 1.0 je cuvala prodaju kao negativan broj, pa je porudzbina uvek bila 0.
+        List<Item> normalized = Item.normalizeUsage(data.items);
+        if (normalized != null) {
+            data.items = normalized;
+            save(ctx, data);
+        }
         return data;
     }
 

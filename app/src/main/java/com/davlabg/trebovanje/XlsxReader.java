@@ -227,8 +227,6 @@ public final class XlsxReader {
         int codeCol = -1;
         int unitCol = -1;
         boolean headerFound = false;
-        int negative = 0;
-        int positive = 0;
 
         for (Element row : children(sheetData, "row")) {
             Map<Integer, String> cells = new TreeMap<>();
@@ -265,22 +263,12 @@ public final class XlsxReader {
             if (name.isEmpty()) continue;
             Double usage = Item.parse(cells.get(usageCol));
             if (usage == null) continue; // zaglavlje, prazni ili tekstualni redovi
-            if (usage < 0) negative++;
-            else if (usage > 0) positive++;
             String code = codeCol >= 0 ? trim(cells.get(codeCol)) : "";
             String unit = unitCol >= 0 ? trim(cells.get(unitCol)) : "";
             items.add(new Item(code, name, unit, usage, null));
         }
 
-        // Potrosnja zabelezena kao odliv (negativni brojevi): okreni znak, a retke pozitivne vrednosti
-        // (npr. povracaj) tretiraj kao potrosnju 0.
-        if (negative > positive) {
-            List<Item> flipped = new ArrayList<>(items.size());
-            for (Item it : items) {
-                flipped.add(new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, null));
-            }
-            return flipped;
-        }
-        return items;
+        List<Item> normalized = Item.normalizeUsage(items);
+        return normalized != null ? normalized : items;
     }
 }

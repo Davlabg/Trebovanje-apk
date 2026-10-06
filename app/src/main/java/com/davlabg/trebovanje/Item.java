@@ -1,5 +1,8 @@
 package com.davlabg.trebovanje;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /** Jedan artikal: sifra (kolona A), naziv (kolona B), jedinica mere (kolona D), nedeljna prodaja (kolona S) i uneto stanje. */
 public class Item {
     public final String code;
@@ -32,6 +35,26 @@ public class Item {
         double diff = usage - stock;
         if (diff <= 0) return 0;
         return Math.ceil(diff - 1e-9);
+    }
+
+    /**
+     * Izvestaj potrosnju belezi kao odliv (negativni brojevi). Ako je vecina vrednosti negativna,
+     * okrece znak; retke pozitivne vrednosti (npr. povracaj) postaju potrosnja 0. Uneto stanje ostaje.
+     * Vraca null ako lista ne treba da se menja.
+     */
+    public static List<Item> normalizeUsage(List<Item> items) {
+        int negative = 0;
+        int positive = 0;
+        for (Item it : items) {
+            if (it.usage < 0) negative++;
+            else if (it.usage > 0) positive++;
+        }
+        if (negative <= positive) return null;
+        List<Item> flipped = new ArrayList<>(items.size());
+        for (Item it : items) {
+            flipped.add(new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, it.stock));
+        }
+        return flipped;
     }
 
     public static String format(double value) {
