@@ -32,10 +32,11 @@ jobs:
           path: Trebovanje.apk
 
       - name: Publish release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: build-${{ github.run_number }}
-          name: Trebovanje (build ${{ github.run_number }})
-          target_commitish: ${{ github.sha }}
-          make_latest: true
-          files: Trebovanje.apk
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "build-${{ github.run_number }}" Trebovanje.apk \
+            --target "${{ github.sha }}" \
+            --title "Trebovanje (build ${{ github.run_number }})" \
+            --notes "APK za instalaciju na Android telefonu." \
+            --latest
