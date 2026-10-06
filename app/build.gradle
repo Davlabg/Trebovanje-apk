@@ -1,0 +1,37 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.davlabg.trebovanje'
+    compileSdk 35
+
+    defaultConfig {
+        applicationId 'com.davlabg.trebovanje'
+        minSdk 26
+        targetSdk 35
+        versionCode 1
+        versionName '1.0'
+    }
+
+    signingConfigs {
+        release {
+            storeFile file('trebovanje.jks')
+            storePassword 'trebovanje'
+            keyAlias 'trebovanje'
+            keyPassword 'trebovanje'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}

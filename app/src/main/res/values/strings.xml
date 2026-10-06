@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Trebovanje</string>
+
+    <string name="action_import">Uvezi Excel</string>
+    <string name="action_export">Sačuvaj porudžbinu (Excel)</string>
+    <string name="action_share">Podeli porudžbinu</string>
+    <string name="action_clear">Obriši uneto stanje</string>
+
+    <string name="search_hint">Pretraga artikla…</string>
+    <string name="only_order">Prikaži samo artikle za poručivanje</string>
+    <string name="empty_text">Uvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (item), a nedeljna prodaja iz kolone S (usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.</string>
+
+    <string name="col_item">Artikal</string>
+    <string name="col_order">Poručiti</string>
+    <string name="row_details">Prodaja/ned: %1$s   •   Stanje: %2$s</string>
+    <string name="summary">Uneto stanje: %1$d / %2$d   •   Za poručivanje: %3$d</string>
+
+    <string name="dialog_usage">Nedeljna prodaja: %1$s</string>
+    <string name="dialog_hint">Trenutno stanje</string>
+    <string name="dialog_order">Poručiti: %1$s</string>
+    <string name="save">Sačuvaj</string>
+    <string name="save_next">Sledeći</string>
+    <string name="cancel">Otkaži</string>
+    <string name="invalid_number">Unesite ispravan broj</string>
+
+    <string name="reading">Učitavam fajl…</string>
+    <string name="imported">Učitano artikala: %1$d</string>
+    <string name="kept_stock">Zadržano ranije uneto stanje za %1$d artikala</string>
+    <string name="import_failed">Greška pri učitavanju</string>
+    <string name="cannot_open">Fajl ne može da se otvori</string>
+    <string name="no_file_picker">Nije pronađena aplikacija za izbor fajla</string>
+    <string name="nothing_to_order">Nema artikala za poručivanje (unesite stanje)</string>
+    <string name="saved">Porudžbina je sačuvana</string>
+    <string name="save_failed">Greška pri čuvanju</string>
+    <string name="share_title">Porudžbina %1$s</string>
+    <string name="clear_confirm">Obrisati sva uneta stanja? Lista artikala i prodaja ostaju.</string>
+    <string name="clear_yes">Obriši</string>
+</resources>
