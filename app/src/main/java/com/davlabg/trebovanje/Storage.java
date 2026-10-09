@@ -61,7 +61,16 @@ public final class Storage {
                 Iterator<String> keys = links.keys();
                 while (keys.hasNext()) {
                     String k = keys.next();
-                    data.links.put(k, links.getString(k));
+                    List<String> codes = new ArrayList<>();
+                    JSONArray list = links.optJSONArray(k);
+                    if (list != null) {
+                        for (int i = 0; i < list.length(); i++) codes.add(list.getString(i));
+                    } else {
+                        // Verzija 1.3/1.4: jedna sifra kao tekst ("" = uklonjena veza).
+                        String code = links.optString(k, "");
+                        if (!code.isEmpty()) codes.add(code);
+                    }
+                    data.links.put(k, codes);
                 }
             }
         } catch (Exception e) {
@@ -104,7 +113,9 @@ public final class Storage {
             }
             root.put("warehouse", wh);
             JSONObject links = new JSONObject();
-            for (Map.Entry<String, String> e : data.links.entrySet()) links.put(e.getKey(), e.getValue());
+            for (Map.Entry<String, List<String>> e : data.links.entrySet()) {
+                links.put(e.getKey(), new JSONArray(e.getValue()));
+            }
             root.put("links", links);
             File tmp = new File(ctx.getFilesDir(), FILE + ".tmp");
             try (FileOutputStream out = new FileOutputStream(tmp)) {

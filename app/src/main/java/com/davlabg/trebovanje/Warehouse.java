@@ -152,7 +152,7 @@ public final class Warehouse {
      * naziva u magacinu, a taj artikal iz magacina odgovara samo jednom artiklu iz izvestaja.
      * Vec postojece veze se ne menjaju. Vraca broj novih veza.
      */
-    public static int autoLink(List<Item> items, List<Article> articles, Map<String, String> links) {
+    public static int autoLink(List<Item> items, List<Article> articles, Map<String, List<String>> links) {
         Map<String, String> candidate = new HashMap<>();
         Map<String, Integer> claims = new HashMap<>();
         for (Item it : items) {
@@ -175,7 +175,9 @@ public final class Warehouse {
         for (Item it : items) {
             String code = candidate.get(it.key());
             if (code == null || claims.get(code) != 1 || links.containsKey(it.key())) continue;
-            links.put(it.key(), code);
+            List<String> codes = new ArrayList<>();
+            codes.add(code);
+            links.put(it.key(), codes);
             added++;
         }
         return added;

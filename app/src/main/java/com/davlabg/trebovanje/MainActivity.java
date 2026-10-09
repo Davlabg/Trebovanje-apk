@@ -4,6 +4,7 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.database.Cursor;
+import android.graphics.Typeface;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.OpenableColumns;
@@ -31,9 +32,11 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 
 public class MainActivity extends Activity {
 
@@ -268,7 +271,7 @@ public class MainActivity extends Activity {
             box.addView(wh);
 
             Button link = new Button(this);
-            link.setText(data.articleFor(it) == null ? R.string.link_warehouse : R.string.change_link);
+            link.setText(data.isLinked(it) ? R.string.change_link : R.string.link_warehouse);
             link.setOnClickListener(v -> {
                 String text = input.getText().toString();
                 if (!text.trim().isEmpty() && !saveStock(it, input)) return;
@@ -324,10 +327,15 @@ public class MainActivity extends Activity {
 
     // ---------- Povezivanje sa magacinom ----------
 
+    /** Izbor jedne ili vise sifara iz magacina; stanja izabranih sifara se sabiraju. */
     private void showLinkPicker(Item it, Runnable done) {
         List<Warehouse.Article> sorted = Warehouse.suggestions(it.name, data.warehouse);
         List<Warehouse.Article> shown = new ArrayList<>(sorted);
-        Warehouse.Article current = data.articleFor(it);
+        // Vec povezane sifre idu na vrh liste.
+        Set<Warehouse.Article> selected = new LinkedHashSet<>(data.articlesFor(it));
+        sorted.removeAll(selected);
+        sorted.addAll(0, selected);
+        boolean wasLinked = !selected.isEmpty();
 
         int pad = (int) (16 * getResources().getDisplayMetrics().density);
         LinearLayout box = new LinearLayout(this);
@@ -338,13 +346,28 @@ public class MainActivity extends Activity {
         hint.setText(getString(R.string.link_hint, it.name.trim(), it.unit));
         box.addView(hint);
 
+        TextView total = new TextView(this);
+        total.setTextSize(16);
+        total.setTypeface(null, Typeface.BOLD);
+        total.setPadding(0, pad / 2, 0, 0);
+        box.addView(total);
+        Runnable updateTotal = () -> {
+            double sum = 0;
+            for (Warehouse.Article a : selected) sum += a.available;
+            String unit = selected.isEmpty() ? "" : selected.iterator().next().unitLabel();
+            total.setText(getString(R.string.link_selected, selected.size(), Item.format(sum), unit));
+        };
+        updateTotal.run();
+
         EditText search = new EditText(this);
         search.setHint(R.string.search_hint);
         search.setSingleLine(true);
         box.addView(search);
 
         ListView list = new ListView(this);
-        ArrayAdapter<String> labels = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        list.setChoiceMode(ListView.CHOICE_MODE_MULTIPLE);
+        ArrayAdapter<String> labels = new ArrayAdapter<>(this, android.R.layout.simple_list_item_multiple_choice);
+        list.setAdapter(labels);
         Runnable fill = () -> {
             String q = Warehouse.normalize(search.getText().toString());
             shown.clear();
@@ -352,42 +375,47 @@ public class MainActivity extends Activity {
             for (Warehouse.Article a : sorted) {
                 if (!q.isEmpty() && !Warehouse.normalize(a.name + " " + a.code + " " + a.extCode).contains(q)) continue;
                 shown.add(a);
-                String mark = a == current ? "✔ " : "";
-                labels.add(mark + a.name + "\n" + a.code + "   •   "
+                labels.add(a.name + "\n" + a.code + "   •   "
                         + getString(R.string.wh_amount, Item.format(a.available), a.unitLabel()));
             }
             labels.notifyDataSetChanged();
+            list.clearChoices();
+            for (int i = 0; i < shown.size(); i++) list.setItemChecked(i, selected.contains(shown.get(i)));
         };
-        list.setAdapter(labels);
         box.addView(list, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
-                (int) (getResources().getDisplayMetrics().heightPixels * 0.5)));
+                (int) (getResources().getDisplayMetrics().heightPixels * 0.45)));
         fill.run();
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { fill.run(); }
         });
+        list.setOnItemClickListener((parent, view, pos, id) -> {
+            Warehouse.Article a = shown.get(pos);
+            if (list.isItemChecked(pos)) selected.add(a);
+            else selected.remove(a);
+            updateTotal.run();
+        });
 
         AlertDialog.Builder b = new AlertDialog.Builder(this)
                 .setTitle(R.string.link_title)
                 .setView(box)
+                .setPositiveButton(R.string.save, (d, w) -> {
+                    if (!selected.isEmpty() || wasLinked) {
+                        data.link(it, new ArrayList<>(selected));
+                        saveAndRefresh();
+                    }
+                    done.run();
+                })
                 .setNegativeButton(R.string.cancel, (d, w) -> done.run());
-        if (current != null) {
+        if (wasLinked) {
             b.setNeutralButton(R.string.unlink, (d, w) -> {
-                data.link(it, null);
+                data.link(it, new ArrayList<>());
                 saveAndRefresh();
                 done.run();
             });
         }
-        AlertDialog dialog = b.create();
-        list.setOnItemClickListener((parent, view, pos, id) -> {
-            Warehouse.Article a = shown.get(pos);
-            dialog.dismiss();
-            data.link(it, a);
-            saveAndRefresh();
-            done.run();
-        });
-        dialog.show();
+        b.show();
     }
 
     private void saveAndRefresh() {
@@ -486,9 +514,8 @@ public class MainActivity extends Activity {
             sb.append(it.name.trim()).append(" – ").append(Item.format(o));
             if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
             if (data.shortage(it)) {
-                Warehouse.Article a = data.articleFor(it);
                 sb.append("  ⚠ ").append(getString(R.string.share_shortage,
-                        Item.format(a.available), a.unitLabel()));
+                        Item.format(data.availableFor(it)), data.unitFor(it)));
             }
             sb.append('\n');
         }

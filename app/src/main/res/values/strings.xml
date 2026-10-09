@@ -49,9 +49,11 @@
     <string name="wh_amount">%1$s %2$s</string>
     <string name="wh_shortage">"  ⚠ nema dovoljno"</string>
     <string name="link_warehouse">Poveži sa magacinom</string>
-    <string name="change_link">Promeni artikal iz magacina</string>
+    <string name="change_link">Promeni šifre iz magacina</string>
     <string name="link_title">Artikal u magacinu</string>
-    <string name="link_hint">Izaberite artikal iz magacina za „%1$s” (%2$s). Najsličniji su na vrhu.</string>
+    <string name="link_hint">Označite jednu ili više šifara iz magacina za „%1$s” (%2$s). Stanja označenih šifara se sabiraju. Najsličniji nazivi su na vrhu.</string>
+    <string name="link_selected">Označeno: %1$d   •   Ukupno: %2$s %3$s</string>
+    <string name="wh_codes">" (%1$d šifre)"</string>
     <string name="unlink">Ukloni vezu</string>
     <string name="share_shortage">magacin ima samo %1$s %2$s</string>
 </resources>

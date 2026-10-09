@@ -21,6 +21,7 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
 - Sabiraju se samo redovi sa statusom **Regularno** (svi lotovi i rokovi); artikli sa statusom **Carina** (i Blokirano) se ne stavljaju na stanje.
 - Šifre magacina se ne poklapaju sa šiframa iz Usage izveštaja, pa se artikli povezuju po nazivu: sigurni parovi automatski,
   ostali jednom ručno (dodirnite artikal → **Poveži sa magacinom**, najsličniji nazivi su na vrhu). Veze se pamte.
+- Jedan artikal se može povezati sa **više šifara** iz magacina (označite sve); stanja označenih šifara se sabiraju.
 - Crveno (⚠ nema dovoljno) se označava kad magacin nema ništa, ili kad su jedinice iste a u magacinu ima manje nego što treba poručiti.
 
 ## Upotreba

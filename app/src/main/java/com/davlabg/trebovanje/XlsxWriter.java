@@ -3,6 +3,7 @@ package com.davlabg.trebovanje;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -17,7 +18,7 @@ public final class XlsxWriter {
         int r = 1;
         if (wh) {
             rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti",
-                    "Magacin (raspoloživo)", "Jed. mere magacin", "Napomena"));
+                    "Magacin (raspoloživo)", "Jed. mere magacin", "Šifre magacina", "Napomena"));
         } else {
             rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti"));
         }
@@ -32,13 +33,19 @@ public final class XlsxWriter {
                     .append(it.stock == null ? "" : numCell("E" + r, it.stock))
                     .append(it.stock == null ? "" : numCell("F" + r, order));
             if (wh) {
-                Warehouse.Article a = data.articleFor(it);
-                if (a == null) {
-                    rows.append(strCell("I" + r, "Nije povezano sa magacinom", 0));
+                List<Warehouse.Article> linked = data.articlesFor(it);
+                if (linked.isEmpty()) {
+                    rows.append(strCell("J" + r, "Nije povezano sa magacinom", 0));
                 } else {
-                    rows.append(numCell("G" + r, a.available))
-                            .append(strCell("H" + r, a.unitLabel(), 0));
-                    if (data.shortage(it)) rows.append(strCell("I" + r, "Nema dovoljno u magacinu", 1));
+                    StringBuilder codes = new StringBuilder();
+                    for (Warehouse.Article a : linked) {
+                        if (codes.length() > 0) codes.append(", ");
+                        codes.append(a.code);
+                    }
+                    rows.append(numCell("G" + r, data.availableFor(it)))
+                            .append(strCell("H" + r, data.unitFor(it), 0))
+                            .append(strCell("I" + r, codes.toString(), 0));
+                    if (data.shortage(it)) rows.append(strCell("J" + r, "Nema dovoljno u magacinu", 1));
                 }
             }
             rows.append("</row>");
@@ -52,7 +59,8 @@ public final class XlsxWriter {
                 + "<col min=\"2\" max=\"2\" width=\"34\" customWidth=\"1\"/>"
                 + "<col min=\"3\" max=\"3\" width=\"10\" customWidth=\"1\"/>"
                 + "<col min=\"4\" max=\"8\" width=\"17\" customWidth=\"1\"/>"
-                + "<col min=\"9\" max=\"9\" width=\"30\" customWidth=\"1\"/></cols>"
+                + "<col min=\"9\" max=\"9\" width=\"20\" customWidth=\"1\"/>"
+                + "<col min=\"10\" max=\"10\" width=\"30\" customWidth=\"1\"/></cols>"
                 + "<sheetData>" + rows + "</sheetData></worksheet>";
 
         try (ZipOutputStream zip = new ZipOutputStream(out)) {

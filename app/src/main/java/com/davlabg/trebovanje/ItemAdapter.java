@@ -104,12 +104,13 @@ public class ItemAdapter extends BaseAdapter {
         return v;
     }
 
-    /** Npr. "Magacin: 256 kom  ⚠ nema dovoljno" (samo status Regularno, u jedinici iz magacina). */
+    /** Npr. "Magacin: 380 kom (2 šifre)  ⚠ nema dovoljno" (samo status Regularno, u jedinici iz magacina). */
     public static String warehouseLine(Context ctx, OrderData data, Item it) {
-        Warehouse.Article a = data.articleFor(it);
-        if (a == null) return ctx.getString(R.string.wh_not_linked);
+        int count = data.articlesFor(it).size();
+        if (count == 0) return ctx.getString(R.string.wh_not_linked);
         StringBuilder sb = new StringBuilder(ctx.getString(R.string.wh_line,
-                ctx.getString(R.string.wh_amount, Item.format(a.available), a.unitLabel())));
+                ctx.getString(R.string.wh_amount, Item.format(data.availableFor(it)), data.unitFor(it))));
+        if (count > 1) sb.append(ctx.getString(R.string.wh_codes, count));
         if (data.shortage(it)) sb.append(ctx.getString(R.string.wh_shortage));
         return sb.toString();
     }

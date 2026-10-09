@@ -1,6 +1,7 @@
 package com.davlabg.trebovanje;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,8 +14,11 @@ public class OrderData {
 
     public String warehouseSource = "";
     public List<Warehouse.Article> warehouse = new ArrayList<>();
-    /** Kljuc artikla iz izvestaja -> sifra artikla u magacinu. */
-    public Map<String, String> links = new LinkedHashMap<>();
+    /**
+     * Kljuc artikla iz izvestaja -> sifre artikala u magacinu (isti artikal moze biti pod vise sifara,
+     * stanja se sabiraju). Prazna lista znaci da je veza namerno uklonjena.
+     */
+    public Map<String, List<String>> links = new LinkedHashMap<>();
 
     private Map<String, Warehouse.Article> index;
 
@@ -27,14 +31,37 @@ public class OrderData {
         return !warehouse.isEmpty();
     }
 
-    public Warehouse.Article articleFor(Item it) {
-        String code = links.get(it.key());
-        if (code == null) return null;
+    /** Povezani artikli iz magacina koji postoje u poslednjem uvezenom stanju magacina. */
+    public List<Warehouse.Article> articlesFor(Item it) {
+        List<String> codes = links.get(it.key());
+        if (codes == null || codes.isEmpty()) return Collections.emptyList();
         if (index == null) {
             index = new HashMap<>();
             for (Warehouse.Article a : warehouse) index.put(a.code, a);
         }
-        return index.get(code);
+        List<Warehouse.Article> out = new ArrayList<>(codes.size());
+        for (String c : codes) {
+            Warehouse.Article a = index.get(c);
+            if (a != null) out.add(a);
+        }
+        return out;
+    }
+
+    public boolean isLinked(Item it) {
+        return !articlesFor(it).isEmpty();
+    }
+
+    /** Zbir stanja svih povezanih sifara (status Regularno, u jedinici iz magacina). */
+    public double availableFor(Item it) {
+        double sum = 0;
+        for (Warehouse.Article a : articlesFor(it)) sum += a.available;
+        return sum;
+    }
+
+    /** Jedinica iz magacina za povezane sifre (npr. "kom"); prazno ako nije povezano. */
+    public String unitFor(Item it) {
+        List<Warehouse.Article> list = articlesFor(it);
+        return list.isEmpty() ? "" : list.get(0).unitLabel();
     }
 
     /**
@@ -44,20 +71,26 @@ public class OrderData {
     public boolean shortage(Item it) {
         double order = it.toOrder();
         if (order <= 0) return false;
-        Warehouse.Article a = articleFor(it);
-        if (a == null) return false;
-        if (a.available <= 0) return true;
-        return Warehouse.sameUnit(it.unit, a.unit) && a.available + 1e-9 < order;
+        List<Warehouse.Article> list = articlesFor(it);
+        if (list.isEmpty()) return false;
+        double avail = availableFor(it);
+        if (avail <= 0) return true;
+        for (Warehouse.Article a : list) {
+            if (!Warehouse.sameUnit(it.unit, a.unit)) return false;
+        }
+        return avail + 1e-9 < order;
     }
 
     public int linkedCount() {
         int n = 0;
-        for (Item it : items) if (articleFor(it) != null) n++;
+        for (Item it : items) if (isLinked(it)) n++;
         return n;
     }
 
-    /** Povezuje artikal sa magacinom; null uklanja vezu i sprecava da je automatsko povezivanje vrati. */
-    public void link(Item it, Warehouse.Article a) {
-        links.put(it.key(), a == null ? "" : a.code);
+    /** Povezuje artikal sa jednom ili vise sifara iz magacina; prazna lista uklanja vezu i sprecava automatsko povezivanje. */
+    public void link(Item it, List<Warehouse.Article> articles) {
+        List<String> codes = new ArrayList<>(articles.size());
+        for (Warehouse.Article a : articles) codes.add(a.code);
+        links.put(it.key(), codes);
     }
 }
