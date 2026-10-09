@@ -10,6 +10,7 @@
         android:layout_height="wrap_content"
         android:background="@color/summary_bg"
         android:padding="12dp"
+        android:textColor="@color/navy"
         android:textSize="14sp"
         android:visibility="gone" />
 
@@ -47,14 +48,14 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:text="@string/col_item"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/yellow"
             android:textStyle="bold" />
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/col_order"
-            android:textColor="#FFFFFF"
+            android:textColor="@color/yellow"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -66,7 +67,10 @@
         <ListView
             android:id="@+id/list"
             android:layout_width="match_parent"
-            android:layout_height="match_parent" />
+            android:layout_height="match_parent"
+            android:background="#FFFFFF"
+            android:divider="#DCE6F0"
+            android:dividerHeight="1dp" />
 
         <LinearLayout
             android:id="@+id/empty"
@@ -85,6 +89,7 @@
 
             <Button
                 android:id="@+id/import_button"
+                style="@style/YellowButton"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="24dp"

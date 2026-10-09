@@ -267,10 +267,10 @@ public class MainActivity extends Activity {
             wh.setTextSize(15);
             wh.setPadding(0, pad / 2, 0, 0);
             wh.setText(ItemAdapter.warehouseLine(this, data, it));
-            wh.setTextColor(getColor(data.shortage(it) ? R.color.order : R.color.text_secondary));
+            wh.setTextColor(getColor(data.shortage(it) ? R.color.shortage : R.color.text_secondary));
             box.addView(wh);
 
-            Button link = new Button(this);
+            Button link = new Button(this, null, 0, R.style.YellowButton);
             link.setText(data.isLinked(it) ? R.string.change_link : R.string.link_warehouse);
             link.setOnClickListener(v -> {
                 String text = input.getText().toString();

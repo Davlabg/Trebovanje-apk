@@ -4,5 +4,24 @@
         <item name="android:colorPrimary">@color/primary</item>
         <item name="android:colorPrimaryDark">@color/primary_dark</item>
         <item name="android:colorAccent">@color/accent</item>
+        <item name="android:actionBarStyle">@style/AppActionBar</item>
+        <item name="android:windowBackground">@color/list_bg</item>
+    </style>
+
+    <style name="AppActionBar" parent="android:Widget.Material.ActionBar.Solid">
+        <item name="android:background">@color/primary</item>
+        <item name="android:titleTextStyle">@style/AppActionBarTitle</item>
+    </style>
+
+    <style name="AppActionBarTitle" parent="android:TextAppearance.Material.Widget.ActionBar.Title">
+        <item name="android:textColor">@color/yellow</item>
+        <item name="android:textStyle">bold</item>
+    </style>
+
+    <!-- Žuto dugme sa plavim tekstom -->
+    <style name="YellowButton" parent="android:Widget.Material.Button">
+        <item name="android:backgroundTint">@color/yellow</item>
+        <item name="android:textColor">@color/primary</item>
+        <item name="android:textStyle">bold</item>
     </style>
 </resources>

@@ -1,12 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#1E6B52</color>
-    <color name="primary_dark">#14503D</color>
-    <color name="accent">#E07A1F</color>
-    <color name="order">#C0392B</color>
-    <color name="ok">#1E8449</color>
-    <color name="text_secondary">#616161</color>
+    <!-- Plavo-žuta paleta -->
+    <color name="primary">#0058A3</color>
+    <color name="primary_dark">#004A8C</color>
+    <color name="yellow">#FFDA1A</color>
+    <color name="navy">#0A2A4D</color>
+    <color name="accent">#0058A3</color>
+
+    <color name="order">#0058A3</color>
+    <color name="shortage">#C62828</color>
+    <color name="ok">#2E7D32</color>
+    <color name="text_secondary">#5F6B7A</color>
     <color name="muted">#9E9E9E</color>
-    <color name="summary_bg">#E8F3EE</color>
-    <color name="icon_bg">#1E6B52</color>
+    <color name="summary_bg">#FFDA1A</color>
+    <color name="list_bg">#F5F8FC</color>
+    <color name="icon_bg">#0058A3</color>
 </resources>

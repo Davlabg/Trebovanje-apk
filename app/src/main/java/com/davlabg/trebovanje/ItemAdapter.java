@@ -87,7 +87,7 @@ public class ItemAdapter extends BaseAdapter {
             warehouse.setVisibility(View.VISIBLE);
             warehouse.setText(warehouseLine(ctx, data, it));
             boolean shortage = data.shortage(it);
-            warehouse.setTextColor(ctx.getColor(shortage ? R.color.order : R.color.text_secondary));
+            warehouse.setTextColor(ctx.getColor(shortage ? R.color.shortage : R.color.text_secondary));
             warehouse.setTypeface(null, shortage ? Typeface.BOLD : Typeface.NORMAL);
         } else {
             warehouse.setVisibility(View.GONE);
