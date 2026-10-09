@@ -374,9 +374,7 @@ public class MainActivity extends Activity {
                 .setNegativeButton(R.string.cancel, (d, w) -> done.run());
         if (current != null) {
             b.setNeutralButton(R.string.unlink, (d, w) -> {
-                data.link(it, null, null);
-                // Bez veze, automatsko povezivanje ne sme ponovo da ga poveze.
-                data.links.put(it.key(), "");
+                data.link(it, null);
                 saveAndRefresh();
                 done.run();
             });
@@ -385,61 +383,10 @@ public class MainActivity extends Activity {
         list.setOnItemClickListener((parent, view, pos, id) -> {
             Warehouse.Article a = shown.get(pos);
             dialog.dismiss();
-            if (Warehouse.sameUnit(it.unit, a.unit)) {
-                data.link(it, a, null);
-                saveAndRefresh();
-                done.run();
-            } else {
-                askFactor(it, a, done);
-            }
-        });
-        dialog.show();
-    }
-
-    /** Jedinice se razlikuju (npr. kg u izvestaju, komad u magacinu): pitaj koliko je u jednom komadu. */
-    private void askFactor(Item it, Warehouse.Article a, Runnable done) {
-        int pad = (int) (20 * getResources().getDisplayMetrics().density);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(pad, pad / 2, pad, 0);
-
-        TextView msg = new TextView(this);
-        msg.setText(getString(R.string.factor_message, Warehouse.unitKind(it.unit), a.unitLabel(), a.name));
-        box.addView(msg);
-
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setGravity(Gravity.CENTER);
-        input.setTextSize(22);
-        Double old = data.links.containsKey(it.key()) && a.code.equals(data.links.get(it.key()))
-                ? data.factors.get(it.key()) : null;
-        if (old != null) input.setText(Item.format(old));
-        box.addView(input);
-
-        AlertDialog dialog = new AlertDialog.Builder(this)
-                .setTitle(R.string.factor_title)
-                .setView(box)
-                .setPositiveButton(R.string.save, null)
-                .setNeutralButton(R.string.factor_skip, (d, w) -> {
-                    data.link(it, a, null);
-                    saveAndRefresh();
-                    done.run();
-                })
-                .create();
-        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-            Double f = Item.parse(input.getText().toString());
-            if (f == null || f <= 0) {
-                input.setError(getString(R.string.invalid_number));
-                return;
-            }
-            data.link(it, a, f);
+            data.link(it, a);
             saveAndRefresh();
-            dialog.dismiss();
             done.run();
-        }));
-        if (dialog.getWindow() != null) {
-            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
-        }
+        });
         dialog.show();
     }
 

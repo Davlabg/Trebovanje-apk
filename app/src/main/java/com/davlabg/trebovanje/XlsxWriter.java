@@ -17,7 +17,7 @@ public final class XlsxWriter {
         int r = 1;
         if (wh) {
             rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti",
-                    "Magacin (raspoloživo)", "Jed. mere magacin", "Carina", "Napomena"));
+                    "Magacin (raspoloživo)", "Jed. mere magacin", "Napomena"));
         } else {
             rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti"));
         }
@@ -34,13 +34,11 @@ public final class XlsxWriter {
             if (wh) {
                 Warehouse.Article a = data.articleFor(it);
                 if (a == null) {
-                    rows.append(strCell("J" + r, "Nije povezano sa magacinom", 0));
+                    rows.append(strCell("I" + r, "Nije povezano sa magacinom", 0));
                 } else {
                     rows.append(numCell("G" + r, a.available))
-                            .append(strCell("H" + r, a.unitLabel(), 0))
-                            .append(a.customs > 0 ? numCell("I" + r, a.customs) : "");
-                    if (data.shortage(it)) rows.append(strCell("J" + r, "Nema dovoljno u magacinu", 1));
-                    else if (data.factorFor(it) == null) rows.append(strCell("J" + r, "Nepoznato pakovanje", 0));
+                            .append(strCell("H" + r, a.unitLabel(), 0));
+                    if (data.shortage(it)) rows.append(strCell("I" + r, "Nema dovoljno u magacinu", 1));
                 }
             }
             rows.append("</row>");
@@ -53,8 +51,8 @@ public final class XlsxWriter {
                 + "<cols><col min=\"1\" max=\"1\" width=\"13\" customWidth=\"1\"/>"
                 + "<col min=\"2\" max=\"2\" width=\"34\" customWidth=\"1\"/>"
                 + "<col min=\"3\" max=\"3\" width=\"10\" customWidth=\"1\"/>"
-                + "<col min=\"4\" max=\"9\" width=\"17\" customWidth=\"1\"/>"
-                + "<col min=\"10\" max=\"10\" width=\"30\" customWidth=\"1\"/></cols>"
+                + "<col min=\"4\" max=\"8\" width=\"17\" customWidth=\"1\"/>"
+                + "<col min=\"9\" max=\"9\" width=\"30\" customWidth=\"1\"/></cols>"
                 + "<sheetData>" + rows + "</sheetData></worksheet>";
 
         try (ZipOutputStream zip = new ZipOutputStream(out)) {

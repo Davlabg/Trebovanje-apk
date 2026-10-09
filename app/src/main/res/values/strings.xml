@@ -47,16 +47,11 @@
     <string name="wh_not_linked">Magacin: nije povezano</string>
     <string name="wh_line">Magacin: %1$s</string>
     <string name="wh_amount">%1$s %2$s</string>
-    <string name="wh_customs">" (+%1$s carina)"</string>
-    <string name="wh_no_factor">"  • unesite pakovanje"</string>
     <string name="wh_shortage">"  ⚠ nema dovoljno"</string>
     <string name="link_warehouse">Poveži sa magacinom</string>
     <string name="change_link">Promeni artikal iz magacina</string>
     <string name="link_title">Artikal u magacinu</string>
     <string name="link_hint">Izaberite artikal iz magacina za „%1$s” (%2$s). Najsličniji su na vrhu.</string>
     <string name="unlink">Ukloni vezu</string>
-    <string name="factor_title">Pakovanje</string>
-    <string name="factor_message">Koliko %1$s ima u 1 %2$s iz magacina?\n\n%3$s\n\nNpr. „Ketchup 3X5Kg”: 1 kom = 15 kg.</string>
-    <string name="factor_skip">Ne znam</string>
     <string name="share_shortage">magacin ima samo %1$s %2$s</string>
 </resources>

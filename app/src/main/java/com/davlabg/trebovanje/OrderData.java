@@ -15,8 +15,6 @@ public class OrderData {
     public List<Warehouse.Article> warehouse = new ArrayList<>();
     /** Kljuc artikla iz izvestaja -> sifra artikla u magacinu. */
     public Map<String, String> links = new LinkedHashMap<>();
-    /** Kljuc artikla -> koliko jedinica iz izvestaja (npr. kg) ima u jednoj jedinici iz magacina (npr. komad). */
-    public Map<String, Double> factors = new LinkedHashMap<>();
 
     private Map<String, Warehouse.Article> index;
 
@@ -39,31 +37,17 @@ public class OrderData {
         return index.get(code);
     }
 
-    /** Faktor pretvaranja jedinica magacina u jedinice izvestaja; null ako nije poznat. */
-    public Double factorFor(Item it) {
-        Double f = factors.get(it.key());
-        if (f != null) return f;
-        Warehouse.Article a = articleFor(it);
-        if (a != null && Warehouse.sameUnit(it.unit, a.unit)) return 1.0;
-        return null;
-    }
-
-    /** Raspolozivo u magacinu (status "Regularno"), u jedinicama izvestaja; null ako ne moze da se izracuna. */
-    public Double availableFor(Item it) {
-        Warehouse.Article a = articleFor(it);
-        Double f = factorFor(it);
-        if (a == null || f == null) return null;
-        return a.available * f;
-    }
-
-    /** Magacin nema dovoljno za porudzbinu. */
+    /**
+     * Magacin nema dovoljno za porudzbinu. Kolicine se ne pretvaraju izmedju jedinica (kg u izvestaju,
+     * komad u magacinu), pa se porede samo kad su jedinice iste; prazan magacin je uvek "nema dovoljno".
+     */
     public boolean shortage(Item it) {
         double order = it.toOrder();
         if (order <= 0) return false;
         Warehouse.Article a = articleFor(it);
-        if (a != null && a.available <= 0) return true; // nema nista, bez obzira na jedinice
-        Double avail = availableFor(it);
-        return avail != null && avail + 1e-9 < order;
+        if (a == null) return false;
+        if (a.available <= 0) return true;
+        return Warehouse.sameUnit(it.unit, a.unit) && a.available + 1e-9 < order;
     }
 
     public int linkedCount() {
@@ -72,14 +56,8 @@ public class OrderData {
         return n;
     }
 
-    public void link(Item it, Warehouse.Article a, Double factor) {
-        if (a == null) {
-            links.remove(it.key());
-            factors.remove(it.key());
-            return;
-        }
-        links.put(it.key(), a.code);
-        if (factor == null) factors.remove(it.key());
-        else factors.put(it.key(), factor);
+    /** Povezuje artikal sa magacinom; null uklanja vezu i sprecava da je automatsko povezivanje vrati. */
+    public void link(Item it, Warehouse.Article a) {
+        links.put(it.key(), a == null ? "" : a.code);
     }
 }

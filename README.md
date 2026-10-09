@@ -17,11 +17,11 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
 `ArticlesOnStock` – aplikacija sama prepoznaje koji je fajl.
 
 - Koriste se kolone **NazivArtikla**, **InterniKodArtikla**, **NaStanju** (ili **Količina**), **JedinicaMere** i **Status**.
-- Količine iz više redova (lotovi, rokovi) se sabiraju; **Regularno** je raspoloživo, **Carina** se prikazuje posebno, **Blokirano** se ne računa.
+- Stanje u magacinu se prikazuje u jedinici iz magacina (komad), a nedeljna prodaja u jedinici iz Usage izveštaja (npr. kg) – bez pretvaranja.
+- Sabiraju se samo redovi sa statusom **Regularno** (svi lotovi i rokovi); artikli sa statusom **Carina** (i Blokirano) se ne stavljaju na stanje.
 - Šifre magacina se ne poklapaju sa šiframa iz Usage izveštaja, pa se artikli povezuju po nazivu: sigurni parovi automatski,
   ostali jednom ručno (dodirnite artikal → **Poveži sa magacinom**, najsličniji nazivi su na vrhu). Veze se pamte.
-- Kad se jedinice razlikuju (npr. kg u izveštaju, komad u magacinu), aplikacija pita koliko kg/l ima u jednom komadu.
-- Artikli kojih u magacinu nema dovoljno označeni su crveno (⚠), i to se vidi u porudžbini i Excel izvozu.
+- Crveno (⚠ nema dovoljno) se označava kad magacin nema ništa, ili kad su jedinice iste a u magacinu ima manje nego što treba poručiti.
 
 ## Upotreba
 

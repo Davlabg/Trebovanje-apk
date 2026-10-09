@@ -52,8 +52,7 @@ public final class Storage {
                 for (int i = 0; i < wh.length(); i++) {
                     JSONObject o = wh.getJSONObject(i);
                     articles.add(new Warehouse.Article(o.getString("code"), o.optString("ext", ""),
-                            o.getString("name"), o.optString("unit", ""), o.optDouble("available", 0),
-                            o.optDouble("customs", 0), o.optDouble("blocked", 0)));
+                            o.getString("name"), o.optString("unit", ""), o.optDouble("available", 0)));
                 }
                 data.setWarehouse(articles);
             }
@@ -63,14 +62,6 @@ public final class Storage {
                 while (keys.hasNext()) {
                     String k = keys.next();
                     data.links.put(k, links.getString(k));
-                }
-            }
-            JSONObject factors = root.optJSONObject("factors");
-            if (factors != null) {
-                Iterator<String> keys = factors.keys();
-                while (keys.hasNext()) {
-                    String k = keys.next();
-                    data.factors.put(k, factors.getDouble(k));
                 }
             }
         } catch (Exception e) {
@@ -109,17 +100,12 @@ public final class Storage {
                 o.put("name", a.name);
                 o.put("unit", a.unit);
                 o.put("available", a.available);
-                o.put("customs", a.customs);
-                o.put("blocked", a.blocked);
                 wh.put(o);
             }
             root.put("warehouse", wh);
             JSONObject links = new JSONObject();
             for (Map.Entry<String, String> e : data.links.entrySet()) links.put(e.getKey(), e.getValue());
             root.put("links", links);
-            JSONObject factors = new JSONObject();
-            for (Map.Entry<String, Double> e : data.factors.entrySet()) factors.put(e.getKey(), e.getValue().doubleValue());
-            root.put("factors", factors);
             File tmp = new File(ctx.getFilesDir(), FILE + ".tmp");
             try (FileOutputStream out = new FileOutputStream(tmp)) {
                 out.write(root.toString().getBytes(StandardCharsets.UTF_8));

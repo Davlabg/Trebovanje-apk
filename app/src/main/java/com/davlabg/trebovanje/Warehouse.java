@@ -9,7 +9,8 @@ import java.util.Map;
 
 /**
  * Stanje robe u eksternom magacinu (izvestaj "ArticlesOnStock").
- * Jedan artikal moze imati vise redova (lotovi, rokovi); kolicine se sabiraju po statusu.
+ * Jedan artikal moze imati vise redova (lotovi, rokovi); sabiraju se samo redovi sa statusom "Regularno",
+ * a "Carina" i "Blokirano" se ne stavljaju na stanje.
  * Sifre magacina se ne poklapaju sa siframa iz izvestaja o potrosnji, pa se artikli povezuju po nazivu.
  */
 public final class Warehouse {
@@ -19,22 +20,15 @@ public final class Warehouse {
         public final String extCode;
         public final String name;
         public final String unit;
-        /** Status "Regularno": moze da se poruci. */
+        /** Kolicina sa statusom "Regularno", u jedinici iz magacina (komad). Carina i Blokirano se ne racunaju. */
         public double available;
-        /** Status "Carina": jos nije ocarinjeno. */
-        public double customs;
-        /** Ostali statusi (npr. "Blokirano"). */
-        public double blocked;
 
-        public Article(String code, String extCode, String name, String unit,
-                       double available, double customs, double blocked) {
+        public Article(String code, String extCode, String name, String unit, double available) {
             this.code = code;
             this.extCode = extCode;
             this.name = name;
             this.unit = unit;
             this.available = available;
-            this.customs = customs;
-            this.blocked = blocked;
         }
 
         public String unitLabel() {
@@ -63,7 +57,7 @@ public final class Warehouse {
         }
     }
 
-    /** Da li su jedinica iz izvestaja o potrosnji i jedinica iz magacina iste (pa se kolicine mogu porediti). */
+    /** Da li su jedinica iz izvestaja o potrosnji i jedinica iz magacina iste (samo tada se kolicine porede). */
     public static boolean sameUnit(String usageUnit, String warehouseUnit) {
         String a = unitKind(usageUnit);
         String b = unitKind(warehouseUnit);
@@ -102,12 +96,10 @@ public final class Warehouse {
             String key = code.isEmpty() ? "n:" + name : code;
             Article a = byKey.get(key);
             if (a == null) {
-                a = new Article(code.isEmpty() ? key : code, ext, name, unit, 0, 0, 0);
+                a = new Article(code.isEmpty() ? key : code, ext, name, unit, 0);
                 byKey.put(key, a);
             }
             if (status.isEmpty() || status.equals("regularno")) a.available += qty;
-            else if (status.equals("carina")) a.customs += qty;
-            else a.blocked += qty;
         }
         return headerFound ? new ArrayList<>(byKey.values()) : null;
     }
