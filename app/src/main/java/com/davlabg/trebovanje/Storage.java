@@ -11,22 +11,19 @@ import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 
-/** Cuva listu artikala i uneta stanja u internu memoriju telefona. */
+/** Cuva artikle, uneta stanja, stanje magacina i veze u internu memoriju telefona. */
 public final class Storage {
 
     private static final String FILE = "trebovanje.json";
 
-    public static class Data {
-        public String source = "";
-        public List<Item> items = new ArrayList<>();
-    }
-
     private Storage() {}
 
-    public static Data load(Context ctx) {
-        Data data = new Data();
+    public static OrderData load(Context ctx) {
+        OrderData data = new OrderData();
         File f = new File(ctx.getFilesDir(), FILE);
         if (!f.exists()) return data;
         try (InputStream in = new FileInputStream(f)) {
@@ -48,6 +45,34 @@ public final class Storage {
                             o.optString("unit", ""), o.getDouble("usage"), stock));
                 }
             }
+            data.warehouseSource = root.optString("warehouseSource", "");
+            JSONArray wh = root.optJSONArray("warehouse");
+            if (wh != null) {
+                List<Warehouse.Article> articles = new ArrayList<>();
+                for (int i = 0; i < wh.length(); i++) {
+                    JSONObject o = wh.getJSONObject(i);
+                    articles.add(new Warehouse.Article(o.getString("code"), o.optString("ext", ""),
+                            o.getString("name"), o.optString("unit", ""), o.optDouble("available", 0),
+                            o.optDouble("customs", 0), o.optDouble("blocked", 0)));
+                }
+                data.setWarehouse(articles);
+            }
+            JSONObject links = root.optJSONObject("links");
+            if (links != null) {
+                Iterator<String> keys = links.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    data.links.put(k, links.getString(k));
+                }
+            }
+            JSONObject factors = root.optJSONObject("factors");
+            if (factors != null) {
+                Iterator<String> keys = factors.keys();
+                while (keys.hasNext()) {
+                    String k = keys.next();
+                    data.factors.put(k, factors.getDouble(k));
+                }
+            }
         } catch (Exception e) {
             // Ostecen fajl: pocinjemo od prazne liste.
         }
@@ -60,7 +85,7 @@ public final class Storage {
         return data;
     }
 
-    public static void save(Context ctx, Data data) {
+    public static void save(Context ctx, OrderData data) {
         try {
             JSONObject root = new JSONObject();
             root.put("source", data.source);
@@ -75,6 +100,26 @@ public final class Storage {
                 arr.put(o);
             }
             root.put("items", arr);
+            root.put("warehouseSource", data.warehouseSource);
+            JSONArray wh = new JSONArray();
+            for (Warehouse.Article a : data.warehouse) {
+                JSONObject o = new JSONObject();
+                o.put("code", a.code);
+                o.put("ext", a.extCode);
+                o.put("name", a.name);
+                o.put("unit", a.unit);
+                o.put("available", a.available);
+                o.put("customs", a.customs);
+                o.put("blocked", a.blocked);
+                wh.put(o);
+            }
+            root.put("warehouse", wh);
+            JSONObject links = new JSONObject();
+            for (Map.Entry<String, String> e : data.links.entrySet()) links.put(e.getKey(), e.getValue());
+            root.put("links", links);
+            JSONObject factors = new JSONObject();
+            for (Map.Entry<String, Double> e : data.factors.entrySet()) factors.put(e.getKey(), e.getValue().doubleValue());
+            root.put("factors", factors);
             File tmp = new File(ctx.getFilesDir(), FILE + ".tmp");
             try (FileOutputStream out = new FileOutputStream(tmp)) {
                 out.write(root.toString().getBytes(StandardCharsets.UTF_8));

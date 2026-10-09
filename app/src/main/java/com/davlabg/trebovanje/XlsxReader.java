@@ -44,7 +44,17 @@ public final class XlsxReader {
         }
     }
 
+    /** Cita izvestaj o potrosnji (Usage). */
     public static List<Item> read(InputStream in) throws Exception {
+        for (List<Map<Integer, String>> rows : readSheets(in)) {
+            List<Item> items = parseUsage(rows);
+            if (!items.isEmpty()) return items;
+        }
+        throw new FormatException("Nisu pronadjeni artikli (kolona B) sa nedeljnom prodajom (kolona S).");
+    }
+
+    /** Svi listovi iz fajla, svaki kao lista redova (indeks kolone od 0 -> tekst celije). */
+    public static List<List<Map<Integer, String>>> readSheets(InputStream in) throws Exception {
         byte[] head = new byte[4];
         InputStream buffered = new java.io.BufferedInputStream(in);
         buffered.mark(8);
@@ -74,13 +84,12 @@ public final class XlsxReader {
         List<String> sheetPaths = findSheets(files);
         if (sheetPaths.isEmpty()) throw new FormatException("U fajlu nije pronadjen nijedan list.");
 
+        List<List<Map<Integer, String>>> sheets = new ArrayList<>();
         for (String path : sheetPaths) {
             byte[] data = files.get(path);
-            if (data == null) continue;
-            List<Item> items = readSheet(data, shared);
-            if (!items.isEmpty()) return items;
+            if (data != null) sheets.add(readRows(data, shared));
         }
-        throw new FormatException("Nisu pronadjeni artikli (kolona B) sa nedeljnom prodajom (kolona S).");
+        return sheets;
     }
 
     private static byte[] readAll(InputStream in) throws IOException {
@@ -212,22 +221,15 @@ public final class XlsxReader {
         return raw;
     }
 
-    private static String trim(String s) {
+    static String trim(String s) {
         return s == null ? "" : s.trim();
     }
 
-    private static List<Item> readSheet(byte[] data, List<String> shared) throws Exception {
+    private static List<Map<Integer, String>> readRows(byte[] data, List<String> shared) throws Exception {
         Element root = parse(data).getDocumentElement();
         Element sheetData = firstChild(root, "sheetData");
-        List<Item> items = new ArrayList<>();
-        if (sheetData == null) return items;
-
-        int nameCol = DEFAULT_NAME_COL;
-        int usageCol = DEFAULT_USAGE_COL;
-        int codeCol = -1;
-        int unitCol = -1;
-        boolean headerFound = false;
-
+        List<Map<Integer, String>> rows = new ArrayList<>();
+        if (sheetData == null) return rows;
         for (Element row : children(sheetData, "row")) {
             Map<Integer, String> cells = new TreeMap<>();
             int pos = 0;
@@ -237,11 +239,29 @@ public final class XlsxReader {
                 pos = col + 1;
                 cells.put(col, cellValue(c, shared));
             }
+            rows.add(cells);
+        }
+        return rows;
+    }
 
+    /** Naslov kolone sveden na mala slova i jedan razmak. */
+    static String header(String h) {
+        return h == null ? "" : h.trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+    }
+
+    public static List<Item> parseUsage(List<Map<Integer, String>> rows) {
+        List<Item> items = new ArrayList<>();
+        int nameCol = DEFAULT_NAME_COL;
+        int usageCol = DEFAULT_USAGE_COL;
+        int codeCol = -1;
+        int unitCol = -1;
+        boolean headerFound = false;
+
+        for (Map<Integer, String> cells : rows) {
             if (!headerFound) {
                 int hName = -1, hUsage = -1, hCode = -1, hUnit = -1;
                 for (Map.Entry<Integer, String> e : cells.entrySet()) {
-                    String h = e.getValue().trim().replaceAll("\\s+", " ").toLowerCase(Locale.ROOT);
+                    String h = header(e.getValue());
                     if (h.equals("item") && hName < 0) hName = e.getKey();
                     if (h.equals("usage") && hUsage < 0) hUsage = e.getKey();
                     if (h.equals("item code") && hCode < 0) hCode = e.getKey();

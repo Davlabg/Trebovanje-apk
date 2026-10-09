@@ -5,6 +5,7 @@
     <color name="accent">#E07A1F</color>
     <color name="order">#C0392B</color>
     <color name="ok">#1E8449</color>
+    <color name="text_secondary">#616161</color>
     <color name="muted">#9E9E9E</color>
     <color name="summary_bg">#E8F3EE</color>
     <color name="icon_bg">#1E6B52</color>

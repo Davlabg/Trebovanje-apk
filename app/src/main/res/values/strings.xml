@@ -3,13 +3,14 @@
     <string name="app_name">Trebovanje</string>
 
     <string name="action_import">Uvezi Excel</string>
+    <string name="action_import_warehouse">Uvezi stanje magacina</string>
     <string name="action_export">Sačuvaj porudžbinu (Excel)</string>
     <string name="action_share">Podeli porudžbinu</string>
     <string name="action_clear">Obriši uneto stanje</string>
 
     <string name="search_hint">Pretraga artikla…</string>
     <string name="only_order">Prikaži samo artikle za poručivanje</string>
-    <string name="empty_text">Uvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (Item), a nedeljna prodaja iz kolone S (Usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.</string>
+    <string name="empty_text">Uvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (Item), a nedeljna prodaja iz kolone S (Usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.\n\nPreko istog dugmeta možete uvesti i stanje eksternog magacina (ArticlesOnStock).</string>
 
     <string name="col_item">Artikal</string>
     <string name="col_order">Poručiti</string>
@@ -37,4 +38,25 @@
     <string name="share_title">Porudžbina %1$s</string>
     <string name="clear_confirm">Obrisati sva uneta stanja? Lista artikala i prodaja ostaju.</string>
     <string name="clear_yes">Obriši</string>
+
+    <string name="unknown_file">Fajl nije prepoznat. Očekuje se izveštaj o potrošnji (kolone Item i Usage) ili stanje magacina (kolone NazivArtikla, NaStanju/Količina, JedinicaMere).</string>
+    <string name="warehouse_title">Stanje magacina</string>
+    <string name="warehouse_imported">Učitano artikala iz magacina: %1$d</string>
+    <string name="warehouse_linked">Automatski povezano: %1$d\nUkupno povezano: %2$d od %3$d\n\nOstale artikle povežite tako što ih dodirnete i izaberete „Poveži sa magacinom”.</string>
+    <string name="summary_warehouse">Magacin: povezano %1$d / %2$d   •   Nema dovoljno: %3$d</string>
+    <string name="wh_not_linked">Magacin: nije povezano</string>
+    <string name="wh_line">Magacin: %1$s</string>
+    <string name="wh_amount">%1$s %2$s</string>
+    <string name="wh_customs">" (+%1$s carina)"</string>
+    <string name="wh_no_factor">"  • unesite pakovanje"</string>
+    <string name="wh_shortage">"  ⚠ nema dovoljno"</string>
+    <string name="link_warehouse">Poveži sa magacinom</string>
+    <string name="change_link">Promeni artikal iz magacina</string>
+    <string name="link_title">Artikal u magacinu</string>
+    <string name="link_hint">Izaberite artikal iz magacina za „%1$s” (%2$s). Najsličniji su na vrhu.</string>
+    <string name="unlink">Ukloni vezu</string>
+    <string name="factor_title">Pakovanje</string>
+    <string name="factor_message">Koliko %1$s ima u 1 %2$s iz magacina?\n\n%3$s\n\nNpr. „Ketchup 3X5Kg”: 1 kom = 15 kg.</string>
+    <string name="factor_skip">Ne znam</string>
+    <string name="share_shortage">magacin ima samo %1$s %2$s</string>
 </resources>

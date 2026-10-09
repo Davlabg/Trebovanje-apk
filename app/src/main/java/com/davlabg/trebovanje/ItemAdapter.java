@@ -1,6 +1,7 @@
 package com.davlabg.trebovanje;
 
 import android.content.Context;
+import android.graphics.Typeface;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -15,7 +16,7 @@ public class ItemAdapter extends BaseAdapter {
 
     private final LayoutInflater inflater;
     private final Context ctx;
-    private List<Item> all = new ArrayList<>();
+    private OrderData data = new OrderData();
     private final List<Item> shown = new ArrayList<>();
     private String query = "";
     private boolean onlyToOrder = false;
@@ -25,8 +26,8 @@ public class ItemAdapter extends BaseAdapter {
         this.inflater = LayoutInflater.from(ctx);
     }
 
-    public void setItems(List<Item> items) {
-        this.all = items;
+    public void setData(OrderData data) {
+        this.data = data;
         refresh();
     }
 
@@ -42,7 +43,7 @@ public class ItemAdapter extends BaseAdapter {
 
     public void refresh() {
         shown.clear();
-        for (Item it : all) {
+        for (Item it : data.items) {
             if (!query.isEmpty() && !it.name.toLowerCase(Locale.getDefault()).contains(query)
                     && !it.code.contains(query)) continue;
             if (onlyToOrder && it.toOrder() <= 0) continue;
@@ -73,6 +74,7 @@ public class ItemAdapter extends BaseAdapter {
         TextView name = v.findViewById(R.id.name);
         TextView details = v.findViewById(R.id.details);
         TextView order = v.findViewById(R.id.order);
+        TextView warehouse = v.findViewById(R.id.warehouse);
 
         name.setText(it.name);
         String unit = it.unit.isEmpty() ? "" : " " + it.unit;
@@ -81,6 +83,16 @@ public class ItemAdapter extends BaseAdapter {
                 it.hasStock() ? Item.format(it.stock) + unit : "—");
         if (!it.code.isEmpty()) text = it.code + "   •   " + text;
         details.setText(text);
+        if (data.hasWarehouse()) {
+            warehouse.setVisibility(View.VISIBLE);
+            warehouse.setText(warehouseLine(ctx, data, it));
+            boolean shortage = data.shortage(it);
+            warehouse.setTextColor(ctx.getColor(shortage ? R.color.order : R.color.text_secondary));
+            warehouse.setTypeface(null, shortage ? Typeface.BOLD : Typeface.NORMAL);
+        } else {
+            warehouse.setVisibility(View.GONE);
+        }
+
         if (!it.hasStock()) {
             order.setText("?");
             order.setTextColor(ctx.getColor(R.color.muted));
@@ -90,5 +102,22 @@ public class ItemAdapter extends BaseAdapter {
             order.setTextColor(ctx.getColor(o > 0 ? R.color.order : R.color.ok));
         }
         return v;
+    }
+
+    /** Npr. "Magacin: 120 kom (+29 carina) ≈ 1200 Litre  ⚠ nema dovoljno". */
+    public static String warehouseLine(Context ctx, OrderData data, Item it) {
+        Warehouse.Article a = data.articleFor(it);
+        if (a == null) return ctx.getString(R.string.wh_not_linked);
+        StringBuilder sb = new StringBuilder(ctx.getString(R.string.wh_line,
+                ctx.getString(R.string.wh_amount, Item.format(a.available), a.unitLabel())));
+        if (a.customs > 0) sb.append(ctx.getString(R.string.wh_customs, Item.format(a.customs)));
+        Double factor = data.factorFor(it);
+        if (factor == null) {
+            sb.append(ctx.getString(R.string.wh_no_factor));
+        } else if (!Warehouse.sameUnit(it.unit, a.unit)) {
+            sb.append(" ≈ ").append(Item.format(a.available * factor)).append(' ').append(it.unit);
+        }
+        if (data.shortage(it)) sb.append(ctx.getString(R.string.wh_shortage));
+        return sb.toString();
     }
 }

@@ -3,7 +3,6 @@ package com.davlabg.trebovanje;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -12,11 +11,17 @@ public final class XlsxWriter {
 
     private XlsxWriter() {}
 
-    public static void writeOrder(OutputStream out, List<Item> items, boolean onlyToOrder) throws IOException {
+    public static void writeOrder(OutputStream out, OrderData data, boolean onlyToOrder) throws IOException {
+        boolean wh = data.hasWarehouse();
         StringBuilder rows = new StringBuilder();
         int r = 1;
-        rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti"));
-        for (Item it : items) {
+        if (wh) {
+            rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti",
+                    "Magacin (raspoloživo)", "Jed. mere magacin", "Carina", "Napomena"));
+        } else {
+            rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti"));
+        }
+        for (Item it : data.items) {
             double order = it.toOrder();
             if (onlyToOrder && order <= 0) continue;
             rows.append("<row r=\"").append(r).append("\">")
@@ -25,8 +30,20 @@ public final class XlsxWriter {
                     .append(strCell("C" + r, it.unit, 0))
                     .append(numCell("D" + r, it.usage))
                     .append(it.stock == null ? "" : numCell("E" + r, it.stock))
-                    .append(it.stock == null ? "" : numCell("F" + r, order))
-                    .append("</row>");
+                    .append(it.stock == null ? "" : numCell("F" + r, order));
+            if (wh) {
+                Warehouse.Article a = data.articleFor(it);
+                if (a == null) {
+                    rows.append(strCell("J" + r, "Nije povezano sa magacinom", 0));
+                } else {
+                    rows.append(numCell("G" + r, a.available))
+                            .append(strCell("H" + r, a.unitLabel(), 0))
+                            .append(a.customs > 0 ? numCell("I" + r, a.customs) : "");
+                    if (data.shortage(it)) rows.append(strCell("J" + r, "Nema dovoljno u magacinu", 1));
+                    else if (data.factorFor(it) == null) rows.append(strCell("J" + r, "Nepoznato pakovanje", 0));
+                }
+            }
+            rows.append("</row>");
             r++;
         }
 
@@ -36,7 +53,8 @@ public final class XlsxWriter {
                 + "<cols><col min=\"1\" max=\"1\" width=\"13\" customWidth=\"1\"/>"
                 + "<col min=\"2\" max=\"2\" width=\"34\" customWidth=\"1\"/>"
                 + "<col min=\"3\" max=\"3\" width=\"10\" customWidth=\"1\"/>"
-                + "<col min=\"4\" max=\"6\" width=\"17\" customWidth=\"1\"/></cols>"
+                + "<col min=\"4\" max=\"9\" width=\"17\" customWidth=\"1\"/>"
+                + "<col min=\"10\" max=\"10\" width=\"30\" customWidth=\"1\"/></cols>"
                 + "<sheetData>" + rows + "</sheetData></worksheet>";
 
         try (ZipOutputStream zip = new ZipOutputStream(out)) {

@@ -16,6 +16,7 @@ import android.view.MenuItem;
 import android.view.View;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
+import android.widget.ArrayAdapter;
 import android.widget.Button;
 import android.widget.CheckBox;
 import android.widget.EditText;
@@ -27,6 +28,7 @@ import android.widget.Toast;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -38,7 +40,7 @@ public class MainActivity extends Activity {
     private static final int REQ_IMPORT = 1;
     private static final int REQ_EXPORT = 2;
 
-    private Storage.Data data;
+    private OrderData data;
     private ItemAdapter adapter;
     private TextView summary;
 
@@ -71,7 +73,7 @@ public class MainActivity extends Activity {
         CheckBox onlyOrder = findViewById(R.id.only_order);
         onlyOrder.setOnCheckedChangeListener((b, checked) -> adapter.setOnlyToOrder(checked));
 
-        adapter.setItems(data.items);
+        adapter.setData(data);
         updateSummary();
     }
 
@@ -86,7 +88,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_import) {
+        if (id == R.id.action_import || id == R.id.action_import_warehouse) {
             pickExcel();
         } else if (id == R.id.action_export) {
             exportExcel();
@@ -128,8 +130,22 @@ public class MainActivity extends Activity {
         new Thread(() -> {
             try (InputStream in = getContentResolver().openInputStream(uri)) {
                 if (in == null) throw new Exception(getString(R.string.cannot_open));
-                List<Item> items = XlsxReader.read(in);
-                runOnUiThread(() -> applyImport(items, fileName));
+                List<List<Map<Integer, String>>> sheets = XlsxReader.readSheets(in);
+                for (List<Map<Integer, String>> rows : sheets) {
+                    List<Warehouse.Article> articles = Warehouse.parse(rows);
+                    if (articles != null) {
+                        runOnUiThread(() -> applyWarehouse(articles, fileName));
+                        return;
+                    }
+                }
+                for (List<Map<Integer, String>> rows : sheets) {
+                    List<Item> items = XlsxReader.parseUsage(rows);
+                    if (!items.isEmpty()) {
+                        runOnUiThread(() -> applyImport(items, fileName));
+                        return;
+                    }
+                }
+                throw new Exception(getString(R.string.unknown_file));
             } catch (Exception e) {
                 String msg = e.getMessage() != null ? e.getMessage() : e.toString();
                 runOnUiThread(() -> new AlertDialog.Builder(this)
@@ -155,12 +171,31 @@ public class MainActivity extends Activity {
         }
         data.items = items;
         data.source = fileName;
+        if (data.hasWarehouse()) Warehouse.autoLink(data.items, data.warehouse, data.links);
         Storage.save(this, data);
-        adapter.setItems(data.items);
+        adapter.setData(data);
         updateSummary();
         String msg = getString(R.string.imported, items.size());
         if (kept > 0) msg += "\n" + getString(R.string.kept_stock, kept);
         toast(msg);
+    }
+
+    private void applyWarehouse(List<Warehouse.Article> articles, String fileName) {
+        data.setWarehouse(articles);
+        data.warehouseSource = fileName;
+        int added = Warehouse.autoLink(data.items, data.warehouse, data.links);
+        Storage.save(this, data);
+        adapter.refresh();
+        updateSummary();
+        String msg = getString(R.string.warehouse_imported, articles.size());
+        if (!data.items.isEmpty()) {
+            msg += "\n" + getString(R.string.warehouse_linked, added, data.linkedCount(), data.items.size());
+        }
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.warehouse_title)
+                .setMessage(msg)
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     private String displayName(Uri uri) {
@@ -223,6 +258,29 @@ public class MainActivity extends Activity {
         });
         updatePreview.run();
 
+        AlertDialog[] holder = new AlertDialog[1];
+        if (data.hasWarehouse()) {
+            TextView wh = new TextView(this);
+            wh.setTextSize(15);
+            wh.setPadding(0, pad / 2, 0, 0);
+            wh.setText(ItemAdapter.warehouseLine(this, data, it));
+            wh.setTextColor(getColor(data.shortage(it) ? R.color.order : R.color.text_secondary));
+            box.addView(wh);
+
+            Button link = new Button(this);
+            link.setText(data.articleFor(it) == null ? R.string.link_warehouse : R.string.change_link);
+            link.setOnClickListener(v -> {
+                String text = input.getText().toString();
+                if (!text.trim().isEmpty() && !saveStock(it, input)) return;
+                holder[0].dismiss();
+                showLinkPicker(it, () -> {
+                    int idx = indexOf(it);
+                    if (idx >= 0) showStockDialog(idx);
+                });
+            });
+            box.addView(link);
+        }
+
         boolean hasNext = position + 1 < adapter.getCount();
         AlertDialog.Builder b = new AlertDialog.Builder(this)
                 .setTitle(it.name)
@@ -231,6 +289,7 @@ public class MainActivity extends Activity {
                 .setNegativeButton(R.string.cancel, null);
         if (hasNext) b.setNeutralButton(R.string.save_next, null);
         AlertDialog dialog = b.create();
+        holder[0] = dialog;
 
         dialog.setOnShowListener(d -> {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
@@ -261,6 +320,133 @@ public class MainActivity extends Activity {
             dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
         }
         dialog.show();
+    }
+
+    // ---------- Povezivanje sa magacinom ----------
+
+    private void showLinkPicker(Item it, Runnable done) {
+        List<Warehouse.Article> sorted = Warehouse.suggestions(it.name, data.warehouse);
+        List<Warehouse.Article> shown = new ArrayList<>(sorted);
+        Warehouse.Article current = data.articleFor(it);
+
+        int pad = (int) (16 * getResources().getDisplayMetrics().density);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, pad / 2, pad, 0);
+
+        TextView hint = new TextView(this);
+        hint.setText(getString(R.string.link_hint, it.name.trim(), it.unit));
+        box.addView(hint);
+
+        EditText search = new EditText(this);
+        search.setHint(R.string.search_hint);
+        search.setSingleLine(true);
+        box.addView(search);
+
+        ListView list = new ListView(this);
+        ArrayAdapter<String> labels = new ArrayAdapter<>(this, android.R.layout.simple_list_item_1);
+        Runnable fill = () -> {
+            String q = Warehouse.normalize(search.getText().toString());
+            shown.clear();
+            labels.clear();
+            for (Warehouse.Article a : sorted) {
+                if (!q.isEmpty() && !Warehouse.normalize(a.name + " " + a.code + " " + a.extCode).contains(q)) continue;
+                shown.add(a);
+                String mark = a == current ? "✔ " : "";
+                labels.add(mark + a.name + "\n" + a.code + "   •   "
+                        + getString(R.string.wh_amount, Item.format(a.available), a.unitLabel()));
+            }
+            labels.notifyDataSetChanged();
+        };
+        list.setAdapter(labels);
+        box.addView(list, new LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT,
+                (int) (getResources().getDisplayMetrics().heightPixels * 0.5)));
+        fill.run();
+        search.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) { fill.run(); }
+        });
+
+        AlertDialog.Builder b = new AlertDialog.Builder(this)
+                .setTitle(R.string.link_title)
+                .setView(box)
+                .setNegativeButton(R.string.cancel, (d, w) -> done.run());
+        if (current != null) {
+            b.setNeutralButton(R.string.unlink, (d, w) -> {
+                data.link(it, null, null);
+                // Bez veze, automatsko povezivanje ne sme ponovo da ga poveze.
+                data.links.put(it.key(), "");
+                saveAndRefresh();
+                done.run();
+            });
+        }
+        AlertDialog dialog = b.create();
+        list.setOnItemClickListener((parent, view, pos, id) -> {
+            Warehouse.Article a = shown.get(pos);
+            dialog.dismiss();
+            if (Warehouse.sameUnit(it.unit, a.unit)) {
+                data.link(it, a, null);
+                saveAndRefresh();
+                done.run();
+            } else {
+                askFactor(it, a, done);
+            }
+        });
+        dialog.show();
+    }
+
+    /** Jedinice se razlikuju (npr. kg u izvestaju, komad u magacinu): pitaj koliko je u jednom komadu. */
+    private void askFactor(Item it, Warehouse.Article a, Runnable done) {
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, pad / 2, pad, 0);
+
+        TextView msg = new TextView(this);
+        msg.setText(getString(R.string.factor_message, Warehouse.unitKind(it.unit), a.unitLabel(), a.name));
+        box.addView(msg);
+
+        EditText input = new EditText(this);
+        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        input.setGravity(Gravity.CENTER);
+        input.setTextSize(22);
+        Double old = data.links.containsKey(it.key()) && a.code.equals(data.links.get(it.key()))
+                ? data.factors.get(it.key()) : null;
+        if (old != null) input.setText(Item.format(old));
+        box.addView(input);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.factor_title)
+                .setView(box)
+                .setPositiveButton(R.string.save, null)
+                .setNeutralButton(R.string.factor_skip, (d, w) -> {
+                    data.link(it, a, null);
+                    saveAndRefresh();
+                    done.run();
+                })
+                .create();
+        dialog.setOnShowListener(d -> dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+            Double f = Item.parse(input.getText().toString());
+            if (f == null || f <= 0) {
+                input.setError(getString(R.string.invalid_number));
+                return;
+            }
+            data.link(it, a, f);
+            saveAndRefresh();
+            dialog.dismiss();
+            done.run();
+        }));
+        if (dialog.getWindow() != null) {
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+        }
+        dialog.show();
+    }
+
+    private void saveAndRefresh() {
+        Storage.save(this, data);
+        adapter.refresh();
+        updateSummary();
     }
 
     private int indexOf(Item it) {
@@ -302,6 +488,11 @@ public class MainActivity extends Activity {
         summary.setVisibility(View.VISIBLE);
         String text = getString(R.string.summary, entered, data.items.size(), toOrder);
         if (data.source != null && !data.source.isEmpty()) text = data.source + "\n" + text;
+        if (data.hasWarehouse()) {
+            int shortage = 0;
+            for (Item it : data.items) if (data.shortage(it)) shortage++;
+            text += "\n" + getString(R.string.summary_warehouse, data.linkedCount(), data.items.size(), shortage);
+        }
         summary.setText(text);
     }
 
@@ -330,7 +521,7 @@ public class MainActivity extends Activity {
     private void writeExport(Uri uri) {
         try (OutputStream out = getContentResolver().openOutputStream(uri, "wt")) {
             if (out == null) throw new Exception(getString(R.string.cannot_open));
-            XlsxWriter.writeOrder(out, data.items, true);
+            XlsxWriter.writeOrder(out, data, true);
             toast(getString(R.string.saved));
         } catch (Exception e) {
             toast(getString(R.string.save_failed) + ": " + e.getMessage());
@@ -347,6 +538,11 @@ public class MainActivity extends Activity {
             if (!it.code.isEmpty()) sb.append(it.code).append("  ");
             sb.append(it.name.trim()).append(" – ").append(Item.format(o));
             if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
+            if (data.shortage(it)) {
+                Warehouse.Article a = data.articleFor(it);
+                sb.append("  ⚠ ").append(getString(R.string.share_shortage,
+                        Item.format(a.available), a.unitLabel()));
+            }
             sb.append('\n');
         }
         Intent send = new Intent(Intent.ACTION_SEND);
