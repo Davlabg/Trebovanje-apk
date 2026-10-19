@@ -17,10 +17,12 @@ public final class XlsxWriter {
         StringBuilder rows = new StringBuilder();
         int r = 1;
         if (wh) {
-            rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti",
+            rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Korekcija %",
+                    "Potrebno", "Stanje", "Poručiti",
                     "Magacin (raspoloživo)", "Jed. mere magacin", "Šifre magacina", "Napomena"));
         } else {
-            rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Stanje", "Poručiti"));
+            rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Korekcija %",
+                    "Potrebno", "Stanje", "Poručiti"));
         }
         for (Item it : data.items) {
             double order = it.toOrder();
@@ -30,22 +32,24 @@ public final class XlsxWriter {
                     .append(strCell("B" + r, it.name, 0))
                     .append(strCell("C" + r, it.unit, 0))
                     .append(numCell("D" + r, it.usage))
-                    .append(it.stock == null ? "" : numCell("E" + r, it.stock))
-                    .append(it.stock == null ? "" : numCell("F" + r, order));
+                    .append(it.hasPercent() ? numCell("E" + r, it.percent) : "")
+                    .append(numCell("F" + r, round2(it.needed())))
+                    .append(it.stock == null ? "" : numCell("G" + r, it.stock))
+                    .append(it.stock == null ? "" : numCell("H" + r, order));
             if (wh) {
                 List<Warehouse.Article> linked = data.articlesFor(it);
                 if (linked.isEmpty()) {
-                    rows.append(strCell("J" + r, "Nije povezano sa magacinom", 0));
+                    rows.append(strCell("L" + r, "Nije povezano sa magacinom", 0));
                 } else {
                     StringBuilder codes = new StringBuilder();
                     for (Warehouse.Article a : linked) {
                         if (codes.length() > 0) codes.append(", ");
                         codes.append(a.code);
                     }
-                    rows.append(numCell("G" + r, data.availableFor(it)))
-                            .append(strCell("H" + r, data.unitFor(it), 0))
-                            .append(strCell("I" + r, codes.toString(), 0));
-                    if (data.shortage(it)) rows.append(strCell("J" + r, "Nema dovoljno u magacinu", 1));
+                    rows.append(numCell("I" + r, data.availableFor(it)))
+                            .append(strCell("J" + r, data.unitFor(it), 0))
+                            .append(strCell("K" + r, codes.toString(), 0));
+                    if (data.shortage(it)) rows.append(strCell("L" + r, "Nema dovoljno u magacinu", 1));
                 }
             }
             rows.append("</row>");
@@ -58,9 +62,9 @@ public final class XlsxWriter {
                 + "<cols><col min=\"1\" max=\"1\" width=\"13\" customWidth=\"1\"/>"
                 + "<col min=\"2\" max=\"2\" width=\"34\" customWidth=\"1\"/>"
                 + "<col min=\"3\" max=\"3\" width=\"10\" customWidth=\"1\"/>"
-                + "<col min=\"4\" max=\"8\" width=\"17\" customWidth=\"1\"/>"
-                + "<col min=\"9\" max=\"9\" width=\"20\" customWidth=\"1\"/>"
-                + "<col min=\"10\" max=\"10\" width=\"30\" customWidth=\"1\"/></cols>"
+                + "<col min=\"4\" max=\"10\" width=\"15\" customWidth=\"1\"/>"
+                + "<col min=\"11\" max=\"11\" width=\"20\" customWidth=\"1\"/>"
+                + "<col min=\"12\" max=\"12\" width=\"30\" customWidth=\"1\"/></cols>"
                 + "<sheetData>" + rows + "</sheetData></worksheet>";
 
         try (ZipOutputStream zip = new ZipOutputStream(out)) {
@@ -120,6 +124,10 @@ public final class XlsxWriter {
 
     private static String numCell(String ref, double value) {
         return "<c r=\"" + ref + "\"><v>" + num(value) + "</v></c>";
+    }
+
+    private static double round2(double v) {
+        return Math.round(v * 100.0) / 100.0;
     }
 
     private static String num(double v) {

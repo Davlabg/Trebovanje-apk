@@ -41,8 +41,10 @@ public final class Storage {
                 for (int i = 0; i < arr.length(); i++) {
                     JSONObject o = arr.getJSONObject(i);
                     Double stock = o.has("stock") && !o.isNull("stock") ? o.getDouble("stock") : null;
-                    data.items.add(new Item(o.optString("code", ""), o.getString("name"),
-                            o.optString("unit", ""), o.getDouble("usage"), stock));
+                    Item item = new Item(o.optString("code", ""), o.getString("name"),
+                            o.optString("unit", ""), o.getDouble("usage"), stock);
+                    item.percent = o.optDouble("percent", 0);
+                    data.items.add(item);
                 }
             }
             data.warehouseSource = root.optString("warehouseSource", "");
@@ -97,6 +99,7 @@ public final class Storage {
                 o.put("unit", it.unit);
                 o.put("usage", it.usage);
                 if (it.stock != null) o.put("stock", it.stock.doubleValue());
+                if (it.hasPercent()) o.put("percent", it.percent);
                 arr.put(o);
             }
             root.put("items", arr);

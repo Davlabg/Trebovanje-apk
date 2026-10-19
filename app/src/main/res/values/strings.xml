@@ -20,6 +20,12 @@
     <string name="dialog_code">Šifra: %1$s</string>
     <string name="dialog_usage">Nedeljna prodaja: %1$s</string>
     <string name="dialog_hint">Trenutno stanje</string>
+    <string name="dialog_percent" formatted="false">Korekcija potrebe (%) – npr. 20 ili -15:</string>
+    <string name="dialog_needed">Potrebno za nedelju: %1$s (%2$s)</string>
+    <string name="invalid_percent">Unesite procenat (najmanje -100)</string>
+    <string name="row_percent">(%1$s → %2$s)</string>
+    <string name="action_clear_percent" formatted="false">Obriši korekcije (%)</string>
+    <string name="clear_percent_confirm">Obrisati sve korekcije u procentima? Uneto stanje ostaje.</string>
     <string name="dialog_order">Poručiti: %1$s</string>
     <string name="save">Sačuvaj</string>
     <string name="save_next">Sledeći</string>

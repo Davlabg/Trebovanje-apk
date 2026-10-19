@@ -20,4 +20,8 @@
         android:id="@+id/action_clear"
         android:title="@string/action_clear"
         android:showAsAction="never" />
+    <item
+        android:id="@+id/action_clear_percent"
+        android:title="@string/action_clear_percent"
+        android:showAsAction="never" />
 </menu>

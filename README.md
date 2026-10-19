@@ -28,8 +28,11 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
 
 1. Meni (⋮) → **Uvezi Excel** i izaberite izveštaj (.xlsx). Stari `.xls` format treba prvo sačuvati kao `.xlsx`.
 2. Dodirnite artikal, unesite trenutno stanje. Dugme **Sledeći** prelazi na naredni artikal.
-3. **Prikaži samo artikle za poručivanje** – filter liste.
-4. Meni → **Podeli porudžbinu** (Viber, WhatsApp, e-mail…) ili **Sačuvaj porudžbinu (Excel)**.
+3. **Korekcija u procentima** (po artiklu): u prozoru za unos stanja upišite npr. `20` ili `-15` (ili dugmad −10% / +10%).
+   Potrebno = nedeljna prodaja × (1 + korekcija/100), pa Poručiti = Potrebno − stanje. Korekcija se pamti i za sledeće nedelje;
+   meni → **Obriši korekcije (%)** ih briše.
+4. **Prikaži samo artikle za poručivanje** – filter liste.
+5. Meni → **Podeli porudžbinu** (Viber, WhatsApp, e-mail…) ili **Sačuvaj porudžbinu (Excel)**.
 
 Uneta stanja se čuvaju na telefonu. Pri uvozu novog izveštaja stanje se zadržava za artikle sa istom šifrom; **Obriši uneto stanje** kreće ispočetka.
 

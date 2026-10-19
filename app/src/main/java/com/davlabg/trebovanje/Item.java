@@ -11,6 +11,8 @@ public class Item {
     public final double usage;
     /** Trenutno stanje; null dok korisnik ne unese vrednost. */
     public Double stock;
+    /** Korekcija nedeljne potrebe u procentima (npr. +20 ili -15); 0 = bez korekcije. */
+    public double percent;
 
     public Item(String code, String name, String unit, double usage, Double stock) {
         this.code = code == null ? "" : code;
@@ -29,10 +31,19 @@ public class Item {
         return stock != null;
     }
 
-    /** Kolicina za porucivanje za nedelju dana: prodaja - stanje, zaokruzeno navise, nikad manje od 0. */
+    public boolean hasPercent() {
+        return Math.abs(percent) > 1e-9;
+    }
+
+    /** Potreba za nedelju dana: nedeljna prodaja uvecana/umanjena za korekciju u procentima. */
+    public double needed() {
+        return Math.max(0, usage * (1 + percent / 100.0));
+    }
+
+    /** Kolicina za porucivanje za nedelju dana: potreba - stanje, zaokruzeno navise, nikad manje od 0. */
     public double toOrder() {
         if (stock == null) return 0;
-        double diff = usage - stock;
+        double diff = needed() - stock;
         if (diff <= 0) return 0;
         return Math.ceil(diff - 1e-9);
     }
@@ -52,9 +63,16 @@ public class Item {
         if (negative <= positive) return null;
         List<Item> flipped = new ArrayList<>(items.size());
         for (Item it : items) {
-            flipped.add(new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, it.stock));
+            Item copy = new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, it.stock);
+            copy.percent = it.percent;
+            flipped.add(copy);
         }
         return flipped;
+    }
+
+    /** Npr. "+20%" ili "-15%". */
+    public static String formatPercent(double p) {
+        return (p > 0 ? "+" : "") + format(p) + "%";
     }
 
     public static String format(double value) {

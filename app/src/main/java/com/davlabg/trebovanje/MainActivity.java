@@ -99,6 +99,8 @@ public class MainActivity extends Activity {
             shareText();
         } else if (id == R.id.action_clear) {
             confirmClear();
+        } else if (id == R.id.action_clear_percent) {
+            confirmClearPercent();
         } else {
             return super.onOptionsItemSelected(item);
         }
@@ -163,9 +165,15 @@ public class MainActivity extends Activity {
     private void applyImport(List<Item> items, String fileName) {
         // Zadrzi vec uneta stanja za iste artikle (po sifri, a ako je nema, po nazivu).
         Map<String, Double> old = new HashMap<>();
-        for (Item it : data.items) if (it.stock != null) old.put(it.key(), it.stock);
+        Map<String, Double> oldPercent = new HashMap<>();
+        for (Item it : data.items) {
+            if (it.stock != null) old.put(it.key(), it.stock);
+            if (it.hasPercent()) oldPercent.put(it.key(), it.percent);
+        }
         int kept = 0;
         for (Item it : items) {
+            Double p = oldPercent.get(it.key());
+            if (p != null) it.percent = p;
             Double s = old.get(it.key());
             if (s != null) {
                 it.stock = s;
@@ -239,6 +247,39 @@ public class MainActivity extends Activity {
         if (it.hasStock()) input.setText(Item.format(it.stock));
         box.addView(input);
 
+        // Korekcija potrebe u procentima: [-10%] [ polje ] [+10%]
+        TextView pctLabel = new TextView(this);
+        pctLabel.setText(R.string.dialog_percent);
+        pctLabel.setPadding(0, pad / 2, 0, 0);
+        box.addView(pctLabel);
+        LinearLayout pctRow = new LinearLayout(this);
+        pctRow.setOrientation(LinearLayout.HORIZONTAL);
+        pctRow.setGravity(Gravity.CENTER_VERTICAL);
+        Button minus = new Button(this, null, 0, R.style.YellowButton);
+        minus.setText("−10%");
+        EditText pct = new EditText(this);
+        pct.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL
+                | InputType.TYPE_NUMBER_FLAG_SIGNED);
+        pct.setHint("0");
+        pct.setGravity(Gravity.CENTER);
+        pct.setTextSize(20);
+        pct.setSelectAllOnFocus(true);
+        if (it.hasPercent()) pct.setText(Item.format(it.percent).replace(',', '.'));
+        Button plus = new Button(this, null, 0, R.style.YellowButton);
+        plus.setText("+10%");
+        pctRow.addView(minus);
+        pctRow.addView(pct, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
+        pctRow.addView(plus);
+        box.addView(pctRow);
+        View.OnClickListener step = v -> {
+            Double cur = Item.parse(pct.getText().toString());
+            double next = (cur == null ? 0 : cur) + (v == plus ? 10 : -10);
+            if (next < -100) next = -100;
+            pct.setText(Math.abs(next) < 1e-9 ? "" : Item.format(next).replace(',', '.'));
+        };
+        minus.setOnClickListener(step);
+        plus.setOnClickListener(step);
+
         TextView preview = new TextView(this);
         preview.setTextSize(18);
         preview.setGravity(Gravity.CENTER);
@@ -247,18 +288,27 @@ public class MainActivity extends Activity {
 
         Runnable updatePreview = () -> {
             Double s = Item.parse(input.getText().toString());
-            if (s == null) {
-                preview.setText("");
-            } else {
-                Item tmp = new Item(it.code, it.name, it.unit, it.usage, s);
-                preview.setText(getString(R.string.dialog_order, Item.format(tmp.toOrder()) + unit));
+            Double p = Item.parse(pct.getText().toString());
+            Item tmp = new Item(it.code, it.name, it.unit, it.usage, s);
+            tmp.percent = p == null ? 0 : Math.max(-100, p);
+            StringBuilder text = new StringBuilder();
+            if (tmp.hasPercent()) {
+                text.append(getString(R.string.dialog_needed, Item.format(tmp.needed()) + unit,
+                        Item.formatPercent(tmp.percent)));
             }
+            if (s != null) {
+                if (text.length() > 0) text.append('\n');
+                text.append(getString(R.string.dialog_order, Item.format(tmp.toOrder()) + unit));
+            }
+            preview.setText(text);
         };
-        input.addTextChangedListener(new TextWatcher() {
+        TextWatcher watcher = new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
             @Override public void afterTextChanged(Editable s) { updatePreview.run(); }
-        });
+        };
+        input.addTextChangedListener(watcher);
+        pct.addTextChangedListener(watcher);
         updatePreview.run();
 
         AlertDialog[] holder = new AlertDialog[1];
@@ -274,7 +324,7 @@ public class MainActivity extends Activity {
             link.setText(data.isLinked(it) ? R.string.change_link : R.string.link_warehouse);
             link.setOnClickListener(v -> {
                 String text = input.getText().toString();
-                if (!text.trim().isEmpty() && !saveStock(it, input)) return;
+                if (!saveStock(it, input, pct)) return;
                 holder[0].dismiss();
                 showLinkPicker(it, () -> {
                     int idx = indexOf(it);
@@ -296,11 +346,11 @@ public class MainActivity extends Activity {
 
         dialog.setOnShowListener(d -> {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                if (saveStock(it, input)) dialog.dismiss();
+                if (saveStock(it, input, pct)) dialog.dismiss();
             });
             if (hasNext) {
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-                    if (saveStock(it, input)) {
+                    if (saveStock(it, input, pct)) {
                         dialog.dismiss();
                         // Ako je artikal nestao iz filtera "samo za poručivanje", sledeći je na istoj poziciji.
                         int idx = indexOf(it);
@@ -429,7 +479,7 @@ public class MainActivity extends Activity {
         return -1;
     }
 
-    private boolean saveStock(Item it, EditText input) {
+    private boolean saveStock(Item it, EditText input, EditText pct) {
         String text = input.getText().toString();
         Double s = Item.parse(text);
         if (s == null && !text.trim().isEmpty()) {
@@ -440,7 +490,14 @@ public class MainActivity extends Activity {
             input.setError(getString(R.string.invalid_number));
             return false;
         }
+        String pctText = pct.getText().toString();
+        Double p = Item.parse(pctText);
+        if ((p == null && !pctText.trim().isEmpty()) || (p != null && p < -100)) {
+            pct.setError(getString(R.string.invalid_percent));
+            return false;
+        }
         it.stock = s;
+        it.percent = p == null ? 0 : p;
         Storage.save(this, data);
         adapter.refresh();
         updateSummary();
@@ -513,6 +570,7 @@ public class MainActivity extends Activity {
             if (!it.code.isEmpty()) sb.append(it.code).append("  ");
             sb.append(it.name.trim()).append(" – ").append(Item.format(o));
             if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
+            if (it.hasPercent()) sb.append(" (").append(Item.formatPercent(it.percent)).append(')');
             if (data.shortage(it)) {
                 sb.append("  ⚠ ").append(getString(R.string.share_shortage,
                         Item.format(data.availableFor(it)), data.unitFor(it)));
@@ -535,6 +593,18 @@ public class MainActivity extends Activity {
                     Storage.save(this, data);
                     adapter.refresh();
                     updateSummary();
+                })
+                .setNegativeButton(R.string.cancel, null)
+                .show();
+    }
+
+    private void confirmClearPercent() {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.action_clear_percent)
+                .setMessage(R.string.clear_percent_confirm)
+                .setPositiveButton(R.string.clear_yes, (d, w) -> {
+                    for (Item it : data.items) it.percent = 0;
+                    saveAndRefresh();
                 })
                 .setNegativeButton(R.string.cancel, null)
                 .show();
