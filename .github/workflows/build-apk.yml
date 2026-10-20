@@ -24,20 +24,20 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew assembleRelease --no-daemon --stacktrace
-          cp app/build/outputs/apk/release/app-release.apk Trebovanje.apk
+          cp app/build/outputs/apk/release/app-release.apk Nedeljko.apk
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Trebovanje-apk
-          path: Trebovanje.apk
+          name: Nedeljko-apk
+          path: Nedeljko.apk
 
       - name: Publish release
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "build-${{ github.run_number }}" Trebovanje.apk \
+          gh release create "build-${{ github.run_number }}" Nedeljko.apk \
             --target "${{ github.sha }}" \
-            --title "Trebovanje (build ${{ github.run_number }})" \
+            --title "Nedeljko (build ${{ github.run_number }})" \
             --notes "APK za instalaciju na Android telefonu." \
             --latest

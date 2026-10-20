@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Trebovanje</string>
+    <string name="app_name">Nedeljko</string>
 
     <string name="action_import">Uvezi Excel</string>
     <string name="action_import_warehouse">Uvezi stanje magacina</string>
@@ -10,7 +10,7 @@
 
     <string name="search_hint">Pretraga artikla…</string>
     <string name="only_order">Prikaži samo artikle za poručivanje</string>
-    <string name="empty_text">Uvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (Item), a nedeljna prodaja iz kolone S (Usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.\n\nPreko istog dugmeta možete uvesti i stanje eksternog magacina (ArticlesOnStock).</string>
+    <string name="empty_text">Nedeljko – svake nedelje zna šta fali.\n\nUvezite Excel izveštaj (.xlsx).\n\nNazivi artikala se čitaju iz kolone B (Item), a nedeljna prodaja iz kolone S (Usage).\n\nZatim dodirnite artikal i unesite trenutno stanje – aplikacija računa koliko treba poručiti za nedelju dana.\n\nPreko istog dugmeta možete uvesti i stanje eksternog magacina (ArticlesOnStock).</string>
 
     <string name="col_item">Artikal</string>
     <string name="col_order">Poručiti</string>

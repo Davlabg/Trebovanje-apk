@@ -1,4 +1,6 @@
-# Trebovanje – Android aplikacija za poručivanje robe
+# Nedeljko – Android aplikacija za nedeljno poručivanje robe
+
+*Svake nedelje zna šta fali.* (ranije: Trebovanje)
 
 Aplikacija učitava nedeljni izveštaj iz Excel-a (.xlsx) i za svaki artikal računa koliko treba poručiti za nedelju dana.
 
@@ -40,7 +42,7 @@ Uneta stanja se čuvaju na telefonu. Pri uvozu novog izveštaja stanje se zadrž
 
 ## Preuzimanje APK-a
 
-Svaki push na GitHub pokreće GitHub Actions koji pravi APK i objavljuje ga u sekciji **Releases** (`Trebovanje.apk`).
+Svaki push na GitHub pokreće GitHub Actions koji pravi APK i objavljuje ga u sekciji **Releases** (`Nedeljko.apk`).
 Na telefonu dozvolite instalaciju iz nepoznatih izvora.
 
 ## Lokalni build
