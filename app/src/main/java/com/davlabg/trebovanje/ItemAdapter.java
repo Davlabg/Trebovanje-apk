@@ -81,11 +81,12 @@ public class ItemAdapter extends BaseAdapter {
         String usage = Item.format(it.usage) + unit;
         if (it.hasPercent()) {
             usage += " " + ctx.getString(R.string.row_percent, Item.formatPercent(it.percent),
-                    Item.format(it.needed()));
+                    Item.format(it.usage * (1 + it.percent / 100.0)));
         }
         String text = ctx.getString(R.string.row_details,
                 usage,
                 it.hasStock() ? Item.format(it.stock) + unit : "—");
+        if (it.hasSafety()) text += "   •   " + ctx.getString(R.string.row_safety, Item.format(it.safety) + unit);
         if (!it.code.isEmpty()) text = it.code + "   •   " + text;
         details.setText(text);
         if (data.hasWarehouse()) {

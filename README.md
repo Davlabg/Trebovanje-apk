@@ -31,8 +31,10 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
 3. **Korekcija u procentima** (po artiklu): u prozoru za unos stanja upišite npr. `20` ili `-15` (ili dugmad −10% / +10%).
    Potrebno = nedeljna prodaja × (1 + korekcija/100), pa Poručiti = Potrebno − stanje. Korekcija se pamti i za sledeće nedelje;
    meni → **Obriši korekcije (%)** ih briše.
-4. **Prikaži samo artikle za poručivanje** – filter liste.
-5. Meni → **Podeli porudžbinu** (Viber, WhatsApp, e-mail…) ili **Sačuvaj porudžbinu (Excel)**.
+4. **Safety stock** (po artiklu, u jedinici iz izveštaja): minimalna količina koja uvek treba da ostane.
+   Potrebno = nedeljna prodaja × (1 + korekcija/100) + safety stock. Pamti se i pri uvozu novih izveštaja, dok se ručno ne promeni.
+5. **Prikaži samo artikle za poručivanje** – filter liste.
+6. Meni → **Podeli porudžbinu** (Viber, WhatsApp, e-mail…) ili **Sačuvaj porudžbinu (Excel)**.
 
 Uneta stanja se čuvaju na telefonu. Pri uvozu novog izveštaja stanje se zadržava za artikle sa istom šifrom; **Obriši uneto stanje** kreće ispočetka.
 

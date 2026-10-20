@@ -166,14 +166,18 @@ public class MainActivity extends Activity {
         // Zadrzi vec uneta stanja za iste artikle (po sifri, a ako je nema, po nazivu).
         Map<String, Double> old = new HashMap<>();
         Map<String, Double> oldPercent = new HashMap<>();
+        Map<String, Double> oldSafety = new HashMap<>();
         for (Item it : data.items) {
             if (it.stock != null) old.put(it.key(), it.stock);
             if (it.hasPercent()) oldPercent.put(it.key(), it.percent);
+            if (it.hasSafety()) oldSafety.put(it.key(), it.safety);
         }
         int kept = 0;
         for (Item it : items) {
             Double p = oldPercent.get(it.key());
             if (p != null) it.percent = p;
+            Double ss = oldSafety.get(it.key());
+            if (ss != null) it.safety = ss;
             Double s = old.get(it.key());
             if (s != null) {
                 it.stock = s;
@@ -280,6 +284,20 @@ public class MainActivity extends Activity {
         minus.setOnClickListener(step);
         plus.setOnClickListener(step);
 
+        // Safety stock: pamti se dok se rucno ne promeni.
+        TextView safetyLabel = new TextView(this);
+        safetyLabel.setText(getString(R.string.dialog_safety, it.unit));
+        safetyLabel.setPadding(0, pad / 2, 0, 0);
+        box.addView(safetyLabel);
+        EditText safety = new EditText(this);
+        safety.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
+        safety.setHint("0");
+        safety.setGravity(Gravity.CENTER);
+        safety.setTextSize(20);
+        safety.setSelectAllOnFocus(true);
+        if (it.hasSafety()) safety.setText(Item.format(it.safety));
+        box.addView(safety);
+
         TextView preview = new TextView(this);
         preview.setTextSize(18);
         preview.setGravity(Gravity.CENTER);
@@ -289,12 +307,19 @@ public class MainActivity extends Activity {
         Runnable updatePreview = () -> {
             Double s = Item.parse(input.getText().toString());
             Double p = Item.parse(pct.getText().toString());
+            Double ss = Item.parse(safety.getText().toString());
             Item tmp = new Item(it.code, it.name, it.unit, it.usage, s);
             tmp.percent = p == null ? 0 : Math.max(-100, p);
+            tmp.safety = ss == null ? 0 : Math.max(0, ss);
             StringBuilder text = new StringBuilder();
-            if (tmp.hasPercent()) {
-                text.append(getString(R.string.dialog_needed, Item.format(tmp.needed()) + unit,
-                        Item.formatPercent(tmp.percent)));
+            if (tmp.hasPercent() || tmp.hasSafety()) {
+                StringBuilder why = new StringBuilder();
+                if (tmp.hasPercent()) why.append(Item.formatPercent(tmp.percent));
+                if (tmp.hasSafety()) {
+                    if (why.length() > 0) why.append(", ");
+                    why.append(getString(R.string.row_safety, Item.format(tmp.safety)));
+                }
+                text.append(getString(R.string.dialog_needed, Item.format(tmp.needed()) + unit, why));
             }
             if (s != null) {
                 if (text.length() > 0) text.append('\n');
@@ -309,6 +334,7 @@ public class MainActivity extends Activity {
         };
         input.addTextChangedListener(watcher);
         pct.addTextChangedListener(watcher);
+        safety.addTextChangedListener(watcher);
         updatePreview.run();
 
         AlertDialog[] holder = new AlertDialog[1];
@@ -324,7 +350,7 @@ public class MainActivity extends Activity {
             link.setText(data.isLinked(it) ? R.string.change_link : R.string.link_warehouse);
             link.setOnClickListener(v -> {
                 String text = input.getText().toString();
-                if (!saveStock(it, input, pct)) return;
+                if (!saveStock(it, input, pct, safety)) return;
                 holder[0].dismiss();
                 showLinkPicker(it, () -> {
                     int idx = indexOf(it);
@@ -346,11 +372,11 @@ public class MainActivity extends Activity {
 
         dialog.setOnShowListener(d -> {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                if (saveStock(it, input, pct)) dialog.dismiss();
+                if (saveStock(it, input, pct, safety)) dialog.dismiss();
             });
             if (hasNext) {
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-                    if (saveStock(it, input, pct)) {
+                    if (saveStock(it, input, pct, safety)) {
                         dialog.dismiss();
                         // Ako je artikal nestao iz filtera "samo za poručivanje", sledeći je na istoj poziciji.
                         int idx = indexOf(it);
@@ -479,7 +505,7 @@ public class MainActivity extends Activity {
         return -1;
     }
 
-    private boolean saveStock(Item it, EditText input, EditText pct) {
+    private boolean saveStock(Item it, EditText input, EditText pct, EditText safety) {
         String text = input.getText().toString();
         Double s = Item.parse(text);
         if (s == null && !text.trim().isEmpty()) {
@@ -496,8 +522,15 @@ public class MainActivity extends Activity {
             pct.setError(getString(R.string.invalid_percent));
             return false;
         }
+        String safetyText = safety.getText().toString();
+        Double ss = Item.parse(safetyText);
+        if ((ss == null && !safetyText.trim().isEmpty()) || (ss != null && ss < 0)) {
+            safety.setError(getString(R.string.invalid_number));
+            return false;
+        }
         it.stock = s;
         it.percent = p == null ? 0 : p;
+        it.safety = ss == null ? 0 : ss;
         Storage.save(this, data);
         adapter.refresh();
         updateSummary();

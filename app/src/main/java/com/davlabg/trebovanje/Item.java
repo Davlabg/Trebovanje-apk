@@ -13,6 +13,8 @@ public class Item {
     public Double stock;
     /** Korekcija nedeljne potrebe u procentima (npr. +20 ili -15); 0 = bez korekcije. */
     public double percent;
+    /** Safety stock: minimalna kolicina koja uvek treba da ostane, u jedinici iz izvestaja; 0 = bez. */
+    public double safety;
 
     public Item(String code, String name, String unit, double usage, Double stock) {
         this.code = code == null ? "" : code;
@@ -35,9 +37,13 @@ public class Item {
         return Math.abs(percent) > 1e-9;
     }
 
-    /** Potreba za nedelju dana: nedeljna prodaja uvecana/umanjena za korekciju u procentima. */
+    public boolean hasSafety() {
+        return safety > 1e-9;
+    }
+
+    /** Potreba za nedelju dana: nedeljna prodaja uvecana/umanjena za korekciju u procentima, plus safety stock. */
     public double needed() {
-        return Math.max(0, usage * (1 + percent / 100.0));
+        return Math.max(0, usage * (1 + percent / 100.0)) + Math.max(0, safety);
     }
 
     /** Kolicina za porucivanje za nedelju dana: potreba - stanje, zaokruzeno navise, nikad manje od 0. */
@@ -65,6 +71,7 @@ public class Item {
         for (Item it : items) {
             Item copy = new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, it.stock);
             copy.percent = it.percent;
+            copy.safety = it.safety;
             flipped.add(copy);
         }
         return flipped;

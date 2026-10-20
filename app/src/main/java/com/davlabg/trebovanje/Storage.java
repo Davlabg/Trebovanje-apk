@@ -44,6 +44,7 @@ public final class Storage {
                     Item item = new Item(o.optString("code", ""), o.getString("name"),
                             o.optString("unit", ""), o.getDouble("usage"), stock);
                     item.percent = o.optDouble("percent", 0);
+                    item.safety = o.optDouble("safety", 0);
                     data.items.add(item);
                 }
             }
@@ -100,6 +101,7 @@ public final class Storage {
                 o.put("usage", it.usage);
                 if (it.stock != null) o.put("stock", it.stock.doubleValue());
                 if (it.hasPercent()) o.put("percent", it.percent);
+                if (it.hasSafety()) o.put("safety", it.safety);
                 arr.put(o);
             }
             root.put("items", arr);
