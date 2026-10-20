@@ -10,6 +10,10 @@ import android.os.Bundle;
 import android.provider.OpenableColumns;
 import android.text.Editable;
 import android.text.InputType;
+import android.text.SpannableString;
+import android.text.Spanned;
+import android.text.style.RelativeSizeSpan;
+import android.text.style.StyleSpan;
 import android.text.TextWatcher;
 import android.view.Gravity;
 import android.view.Menu;
@@ -45,7 +49,7 @@ public class MainActivity extends Activity {
 
     private OrderData data;
     private ItemAdapter adapter;
-    private TextView summary;
+    private View summary;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -63,6 +67,9 @@ public class MainActivity extends Activity {
 
         Button importButton = findViewById(R.id.import_button);
         importButton.setOnClickListener(v -> pickExcel());
+        findViewById(R.id.btn_import).setOnClickListener(v -> pickExcel());
+        findViewById(R.id.btn_share).setOnClickListener(v -> shareText());
+        findViewById(R.id.btn_export).setOnClickListener(v -> exportExcel());
 
         EditText search = findViewById(R.id.search);
         search.addTextChangedListener(new TextWatcher() {
@@ -227,54 +234,29 @@ public class MainActivity extends Activity {
     private void showStockDialog(int position) {
         if (position < 0 || position >= adapter.getCount()) return;
         Item it = adapter.getItem(position);
-
-        int pad = (int) (20 * getResources().getDisplayMetrics().density);
-        LinearLayout box = new LinearLayout(this);
-        box.setOrientation(LinearLayout.VERTICAL);
-        box.setPadding(pad, pad / 2, pad, 0);
-
-        TextView info = new TextView(this);
         String unit = it.unit.isEmpty() ? "" : " " + it.unit;
+
+        View box = getLayoutInflater().inflate(R.layout.dialog_item, null);
+        TextView info = box.findViewById(R.id.info);
+        TextView neededView = box.findViewById(R.id.needed);
+        TextView orderView = box.findViewById(R.id.to_order);
+        TextView neededDetail = box.findViewById(R.id.needed_detail);
+        EditText input = box.findViewById(R.id.stock);
+        EditText pct = box.findViewById(R.id.pct);
+        EditText safety = box.findViewById(R.id.safety);
+        TextView safetyLabel = box.findViewById(R.id.safety_label);
+
         String infoText = getString(R.string.dialog_usage, Item.format(it.usage) + unit);
-        if (!it.code.isEmpty()) infoText = getString(R.string.dialog_code, it.code) + "\n" + infoText;
+        if (!it.code.isEmpty()) infoText = getString(R.string.dialog_code, it.code) + "   •   " + infoText;
         info.setText(infoText);
-        info.setTextSize(16);
-        box.addView(info);
-
-        EditText input = new EditText(this);
-        input.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        input.setHint(R.string.dialog_hint);
-        input.setGravity(Gravity.CENTER);
-        input.setTextSize(24);
-        input.setSelectAllOnFocus(true);
-        input.setImeOptions(EditorInfo.IME_ACTION_NEXT);
+        safetyLabel.setText(getString(R.string.label_safety, it.unit.isEmpty() ? "-" : it.unit));
         if (it.hasStock()) input.setText(Item.format(it.stock));
-        box.addView(input);
-
-        // Korekcija potrebe u procentima: [-10%] [ polje ] [+10%]
-        TextView pctLabel = new TextView(this);
-        pctLabel.setText(R.string.dialog_percent);
-        pctLabel.setPadding(0, pad / 2, 0, 0);
-        box.addView(pctLabel);
-        LinearLayout pctRow = new LinearLayout(this);
-        pctRow.setOrientation(LinearLayout.HORIZONTAL);
-        pctRow.setGravity(Gravity.CENTER_VERTICAL);
-        Button minus = new Button(this, null, 0, R.style.YellowButton);
-        minus.setText("−10%");
-        EditText pct = new EditText(this);
-        pct.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL
-                | InputType.TYPE_NUMBER_FLAG_SIGNED);
-        pct.setHint("0");
-        pct.setGravity(Gravity.CENTER);
-        pct.setTextSize(20);
-        pct.setSelectAllOnFocus(true);
         if (it.hasPercent()) pct.setText(Item.format(it.percent).replace(',', '.'));
-        Button plus = new Button(this, null, 0, R.style.YellowButton);
-        plus.setText("+10%");
-        pctRow.addView(minus);
-        pctRow.addView(pct, new LinearLayout.LayoutParams(0, LinearLayout.LayoutParams.WRAP_CONTENT, 1));
-        pctRow.addView(plus);
-        box.addView(pctRow);
+        if (it.hasSafety()) safety.setText(Item.format(it.safety));
+
+        // Korekcija: dugmad -10 / +10
+        Button minus = box.findViewById(R.id.pct_minus);
+        Button plus = box.findViewById(R.id.pct_plus);
         View.OnClickListener step = v -> {
             Double cur = Item.parse(pct.getText().toString());
             double next = (cur == null ? 0 : cur) + (v == plus ? 10 : -10);
@@ -284,26 +266,7 @@ public class MainActivity extends Activity {
         minus.setOnClickListener(step);
         plus.setOnClickListener(step);
 
-        // Safety stock: pamti se dok se rucno ne promeni.
-        TextView safetyLabel = new TextView(this);
-        safetyLabel.setText(getString(R.string.dialog_safety, it.unit));
-        safetyLabel.setPadding(0, pad / 2, 0, 0);
-        box.addView(safetyLabel);
-        EditText safety = new EditText(this);
-        safety.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_FLAG_DECIMAL);
-        safety.setHint("0");
-        safety.setGravity(Gravity.CENTER);
-        safety.setTextSize(20);
-        safety.setSelectAllOnFocus(true);
-        if (it.hasSafety()) safety.setText(Item.format(it.safety));
-        box.addView(safety);
-
-        TextView preview = new TextView(this);
-        preview.setTextSize(18);
-        preview.setGravity(Gravity.CENTER);
-        preview.setPadding(0, pad / 2, 0, 0);
-        box.addView(preview);
-
+        // Rezultat na vrhu se racuna dok se kuca.
         Runnable updatePreview = () -> {
             Double s = Item.parse(input.getText().toString());
             Double p = Item.parse(pct.getText().toString());
@@ -311,21 +274,13 @@ public class MainActivity extends Activity {
             Item tmp = new Item(it.code, it.name, it.unit, it.usage, s);
             tmp.percent = p == null ? 0 : Math.max(-100, p);
             tmp.safety = ss == null ? 0 : Math.max(0, ss);
-            StringBuilder text = new StringBuilder();
-            if (tmp.hasPercent() || tmp.hasSafety()) {
-                StringBuilder why = new StringBuilder();
-                if (tmp.hasPercent()) why.append(Item.formatPercent(tmp.percent));
-                if (tmp.hasSafety()) {
-                    if (why.length() > 0) why.append(", ");
-                    why.append(getString(R.string.row_safety, Item.format(tmp.safety)));
-                }
-                text.append(getString(R.string.dialog_needed, Item.format(tmp.needed()) + unit, why));
-            }
-            if (s != null) {
-                if (text.length() > 0) text.append('\n');
-                text.append(getString(R.string.dialog_order, Item.format(tmp.toOrder()) + unit));
-            }
-            preview.setText(text);
+            neededView.setText(Item.format(tmp.needed()) + unit);
+            orderView.setText(s == null ? "—" : Item.format(tmp.toOrder()) + unit);
+            StringBuilder why = new StringBuilder(getString(R.string.needed_detail, Item.format(it.usage)));
+            if (tmp.hasPercent()) why.append(' ').append(Item.formatPercent(tmp.percent));
+            if (tmp.hasSafety()) why.append("  + ").append(getString(R.string.row_safety, Item.format(tmp.safety)));
+            neededDetail.setText(tmp.hasPercent() || tmp.hasSafety() ? why : "");
+            neededDetail.setVisibility(tmp.hasPercent() || tmp.hasSafety() ? View.VISIBLE : View.GONE);
         };
         TextWatcher watcher = new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
@@ -338,18 +293,14 @@ public class MainActivity extends Activity {
         updatePreview.run();
 
         AlertDialog[] holder = new AlertDialog[1];
+        View warehouseBox = box.findViewById(R.id.warehouse_box);
         if (data.hasWarehouse()) {
-            TextView wh = new TextView(this);
-            wh.setTextSize(15);
-            wh.setPadding(0, pad / 2, 0, 0);
+            TextView wh = box.findViewById(R.id.warehouse);
             wh.setText(ItemAdapter.warehouseLine(this, data, it));
-            wh.setTextColor(getColor(data.shortage(it) ? R.color.shortage : R.color.text_secondary));
-            box.addView(wh);
-
-            Button link = new Button(this, null, 0, R.style.YellowButton);
-            link.setText(data.isLinked(it) ? R.string.change_link : R.string.link_warehouse);
+            wh.setTextColor(getColor(data.shortage(it) ? R.color.shortage : R.color.navy));
+            Button link = box.findViewById(R.id.link);
+            link.setText(data.isLinked(it) ? R.string.link_short : R.string.link_warehouse_short);
             link.setOnClickListener(v -> {
-                String text = input.getText().toString();
                 if (!saveStock(it, input, pct, safety)) return;
                 holder[0].dismiss();
                 showLinkPicker(it, () -> {
@@ -357,12 +308,13 @@ public class MainActivity extends Activity {
                     if (idx >= 0) showStockDialog(idx);
                 });
             });
-            box.addView(link);
+        } else {
+            warehouseBox.setVisibility(View.GONE);
         }
 
         boolean hasNext = position + 1 < adapter.getCount();
         AlertDialog.Builder b = new AlertDialog.Builder(this)
-                .setTitle(it.name)
+                .setTitle(it.name.trim())
                 .setView(box)
                 .setPositiveButton(R.string.save, null)
                 .setNegativeButton(R.string.cancel, null);
@@ -396,7 +348,9 @@ public class MainActivity extends Activity {
             return false;
         });
         if (dialog.getWindow() != null) {
-            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE);
+            // Prozor se smanjuje i skroluje kad se otvori tastatura, pa se sve vidi.
+            dialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_VISIBLE
+                    | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         dialog.show();
     }
@@ -551,14 +505,37 @@ public class MainActivity extends Activity {
             if (it.toOrder() > 0) toOrder++;
         }
         summary.setVisibility(View.VISIBLE);
-        String text = getString(R.string.summary, entered, data.items.size(), toOrder);
-        if (data.source != null && !data.source.isEmpty()) text = data.source + "\n" + text;
+        setStat(R.id.stat_entered, getString(R.string.stat_entered, entered, data.items.size()));
+        setStat(R.id.stat_order, getString(R.string.stat_order, toOrder));
         if (data.hasWarehouse()) {
             int shortage = 0;
             for (Item it : data.items) if (data.shortage(it)) shortage++;
-            text += "\n" + getString(R.string.summary_warehouse, data.linkedCount(), data.items.size(), shortage);
+            setStat(R.id.stat_shortage, getString(R.string.stat_shortage, shortage));
+        } else {
+            setStat(R.id.stat_shortage, getString(R.string.stat_items, data.items.size()));
         }
-        summary.setText(text);
+        StringBuilder src = new StringBuilder();
+        if (data.source != null && !data.source.isEmpty()) src.append(data.source);
+        if (data.hasWarehouse()) {
+            if (src.length() > 0) src.append("\n");
+            src.append(data.warehouseSource).append("  •  ")
+                    .append(getString(R.string.summary_linked, data.linkedCount(), data.items.size()));
+        }
+        TextView source = findViewById(R.id.summary_source);
+        source.setText(src);
+        source.setVisibility(src.length() > 0 ? View.VISIBLE : View.GONE);
+    }
+
+    /** Tekst "Naziv\nBroj": broj ispod naziva, veci i podebljan. */
+    private void setStat(int id, String text) {
+        TextView tv = findViewById(id);
+        SpannableString span = new SpannableString(text);
+        int nl = text.indexOf('\n');
+        if (nl >= 0) {
+            span.setSpan(new RelativeSizeSpan(1.5f), nl + 1, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            span.setSpan(new StyleSpan(Typeface.BOLD), nl + 1, text.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        tv.setText(span);
     }
 
     // ---------- Izvoz ----------

@@ -22,6 +22,22 @@
     <string name="dialog_hint">Trenutno stanje</string>
     <string name="dialog_percent" formatted="false">Korekcija potrebe (%) – npr. 20 ili -15:</string>
     <string name="dialog_needed">Potrebno za nedelju: %1$s (%2$s)</string>
+    <string name="label_needed">Potrebno za nedelju</string>
+    <string name="label_stock">Trenutno stanje</string>
+    <string name="label_percent" formatted="false">Korekcija %</string>
+    <string name="label_safety">Safety stock (%1$s)</string>
+    <string name="link_short">Šifre</string>
+    <string name="link_warehouse_short">Poveži</string>
+    <string name="summary_linked">povezano %1$d / %2$d</string>
+    <string name="needed_detail">Prodaja %1$s</string>
+    <string name="only_order_short">Samo za poručivanje</string>
+    <string name="bar_import">Uvezi Excel</string>
+    <string name="bar_share">Podeli</string>
+    <string name="bar_export">Sačuvaj Excel</string>
+    <string name="stat_entered">Uneto stanje\n%1$d / %2$d</string>
+    <string name="stat_order">Za poručivanje\n%1$d</string>
+    <string name="stat_shortage">Nema u magacinu\n%1$d</string>
+    <string name="stat_items">Artikala\n%1$d</string>
     <string name="dialog_safety">Safety stock (%1$s) – pamti se za sledeće porudžbine:</string>
     <string name="row_safety">Safety: %1$s</string>
     <string name="invalid_percent">Unesite procenat (najmanje -100)</string>
