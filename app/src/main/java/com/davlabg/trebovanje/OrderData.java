@@ -20,7 +20,19 @@ public class OrderData {
      */
     public Map<String, List<String>> links = new LinkedHashMap<>();
 
+    /** Popis stanja u TP (true) ili u jedinici iz izveštaja (false). */
+    public boolean countInTp = true;
+    /** Uvezena tabela "Količina u TP"; null = ugrađena tabela iz aplikacije. */
+    public List<TpTable.Entry> tpCustom;
+    public String tpSource = "";
+
     private Map<String, Warehouse.Article> index;
+
+    public int tpCount() {
+        int n = 0;
+        for (Item it : items) if (it.hasTp()) n++;
+        return n;
+    }
 
     public void setWarehouse(List<Warehouse.Article> articles) {
         warehouse = articles;

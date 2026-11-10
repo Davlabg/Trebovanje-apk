@@ -49,6 +49,14 @@
                     android:textColor="@color/navy"
                     android:textSize="18sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/needed_tp"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/navy"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
             </LinearLayout>
 
             <LinearLayout
@@ -71,6 +79,14 @@
                     android:textColor="@color/primary"
                     android:textSize="22sp"
                     android:textStyle="bold" />
+
+                <TextView
+                    android:id="@+id/to_order_sub"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/navy"
+                    android:textSize="13sp"
+                    android:visibility="gone" />
             </LinearLayout>
         </LinearLayout>
 
@@ -82,18 +98,64 @@
             android:textColor="@color/text_secondary"
             android:textSize="12sp" />
 
-        <!-- Trenutno stanje -->
+        <!-- Popis u TP ili u jedinici iz izveštaja -->
+        <LinearLayout
+            android:id="@+id/mode_row"
+            style="@style/FormRow">
+            <TextView
+                style="@style/FormLabel"
+                android:text="@string/label_count_in" />
+            <Button
+                android:id="@+id/mode_tp"
+                style="@style/SmallYellowButton"
+                android:text="@string/tp" />
+            <Button
+                android:id="@+id/mode_unit"
+                style="@style/SmallYellowButton"
+                android:layout_marginStart="6dp" />
+        </LinearLayout>
+
+        <!-- Trenutno stanje (može i račun: 3*15+4) -->
         <LinearLayout style="@style/FormRow">
             <TextView
+                android:id="@+id/stock_label"
                 style="@style/FormLabel"
                 android:text="@string/label_stock" />
             <EditText
                 android:id="@+id/stock"
                 style="@style/FormField"
+                android:layout_width="150dp"
                 android:hint="—"
                 android:importantForAutofill="no"
                 android:imeOptions="actionNext"
-                android:inputType="numberDecimal" />
+                android:inputType="phone" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/stock_calc"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:gravity="end"
+            android:textColor="@color/primary"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <!-- Mini kalkulator -->
+        <LinearLayout
+            android:id="@+id/calc_row"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:orientation="horizontal">
+            <Button android:id="@+id/calc_plus" style="@style/CalcButton" android:text="+" />
+            <Button android:id="@+id/calc_minus" style="@style/CalcButton" android:text="−" />
+            <Button android:id="@+id/calc_times" style="@style/CalcButton" android:text="×" />
+            <Button android:id="@+id/calc_div" style="@style/CalcButton" android:text="÷" />
+            <Button android:id="@+id/calc_open" style="@style/CalcButton" android:text="(" />
+            <Button android:id="@+id/calc_close" style="@style/CalcButton" android:text=")" />
+            <Button android:id="@+id/calc_eq" style="@style/CalcButton" android:text="=" />
+            <Button android:id="@+id/calc_back" style="@style/CalcButton" android:text="⌫" />
         </LinearLayout>
 
         <!-- Korekcija % -->
@@ -130,6 +192,26 @@
                 android:importantForAutofill="no"
                 android:inputType="numberDecimal" />
         </LinearLayout>
+
+        <!-- Količina u TP -->
+        <LinearLayout style="@style/FormRow">
+            <TextView
+                android:id="@+id/tp_label"
+                style="@style/FormLabel" />
+            <EditText
+                android:id="@+id/tp_qty"
+                style="@style/FormField"
+                android:hint="—"
+                android:importantForAutofill="no"
+                android:inputType="numberDecimal" />
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tp_hint"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="@color/text_secondary"
+            android:textSize="12sp" />
 
         <!-- Magacin -->
         <LinearLayout

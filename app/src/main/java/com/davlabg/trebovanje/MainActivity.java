@@ -3,6 +3,7 @@ package com.davlabg.trebovanje;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Intent;
+import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Typeface;
 import android.net.Uri;
@@ -50,6 +51,7 @@ public class MainActivity extends Activity {
     private OrderData data;
     private ItemAdapter adapter;
     private View summary;
+    private TpTable tpTable;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,6 +59,10 @@ public class MainActivity extends Activity {
         setContentView(R.layout.activity_main);
 
         data = Storage.load(this);
+        tpTable = new TpTable(data.tpCustom != null ? data.tpCustom : TpTable.loadBuiltIn(this));
+        // Artikli iz ranije uvezenih izveštaja odmah dobijaju količinu u TP.
+        tpTable.apply(data.items);
+        Storage.save(this, data);
         adapter = new ItemAdapter(this);
         summary = findViewById(R.id.summary);
 
@@ -98,12 +104,14 @@ public class MainActivity extends Activity {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         int id = item.getItemId();
-        if (id == R.id.action_import || id == R.id.action_import_warehouse) {
+        if (id == R.id.action_import || id == R.id.action_import_warehouse || id == R.id.action_import_tp) {
             pickExcel();
         } else if (id == R.id.action_export) {
             exportExcel();
         } else if (id == R.id.action_share) {
             shareText();
+        } else if (id == R.id.action_tp_builtin) {
+            restoreBuiltInTp();
         } else if (id == R.id.action_clear) {
             confirmClear();
         } else if (id == R.id.action_clear_percent) {
@@ -151,6 +159,13 @@ public class MainActivity extends Activity {
                     }
                 }
                 for (List<Map<Integer, String>> rows : sheets) {
+                    List<TpTable.Entry> entries = TpTable.parse(rows);
+                    if (entries != null && !entries.isEmpty()) {
+                        runOnUiThread(() -> applyTpTable(entries, fileName));
+                        return;
+                    }
+                }
+                for (List<Map<Integer, String>> rows : sheets) {
                     List<Item> items = XlsxReader.parseUsage(rows);
                     if (!items.isEmpty()) {
                         runOnUiThread(() -> applyImport(items, fileName));
@@ -174,7 +189,9 @@ public class MainActivity extends Activity {
         Map<String, Double> old = new HashMap<>();
         Map<String, Double> oldPercent = new HashMap<>();
         Map<String, Double> oldSafety = new HashMap<>();
+        Map<String, Double> oldTp = new HashMap<>();
         for (Item it : data.items) {
+            if (it.tpManual && it.tp != null) oldTp.put(it.key(), it.tp);
             if (it.stock != null) old.put(it.key(), it.stock);
             if (it.hasPercent()) oldPercent.put(it.key(), it.percent);
             if (it.hasSafety()) oldSafety.put(it.key(), it.safety);
@@ -185,6 +202,11 @@ public class MainActivity extends Activity {
             if (p != null) it.percent = p;
             Double ss = oldSafety.get(it.key());
             if (ss != null) it.safety = ss;
+            Double tp = oldTp.get(it.key());
+            if (tp != null) {
+                it.tp = tp;
+                it.tpManual = true;
+            }
             Double s = old.get(it.key());
             if (s != null) {
                 it.stock = s;
@@ -193,13 +215,41 @@ public class MainActivity extends Activity {
         }
         data.items = items;
         data.source = fileName;
+        int withTp = tpTable.apply(data.items);
         if (data.hasWarehouse()) Warehouse.autoLink(data.items, data.warehouse, data.links);
         Storage.save(this, data);
         adapter.setData(data);
         updateSummary();
         String msg = getString(R.string.imported, items.size());
         if (kept > 0) msg += "\n" + getString(R.string.kept_stock, kept);
+        msg += "\n" + getString(R.string.summary_tp, withTp, items.size());
         toast(msg);
+    }
+
+    private void applyTpTable(List<TpTable.Entry> entries, String fileName) {
+        data.tpCustom = entries;
+        data.tpSource = fileName;
+        tpTable = new TpTable(entries);
+        int matched = tpTable.apply(data.items);
+        saveAndRefresh();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.tp_title)
+                .setMessage(getString(R.string.tp_imported, entries.size(), matched, data.items.size()))
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private void restoreBuiltInTp() {
+        data.tpCustom = null;
+        data.tpSource = "";
+        tpTable = new TpTable(TpTable.loadBuiltIn(this));
+        int matched = tpTable.apply(data.items);
+        saveAndRefresh();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.tp_title)
+                .setMessage(getString(R.string.tp_builtin_done, tpTable.size(), matched, data.items.size()))
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
     }
 
     private void applyWarehouse(List<Warehouse.Article> articles, String fileName) {
@@ -231,51 +281,230 @@ public class MainActivity extends Activity {
 
     // ---------- Unos stanja ----------
 
+    /** Polja prozora za unos stanja; stanje se uvek čuva u jedinici iz izveštaja, a može se popisivati u TP. */
+    private class StockForm {
+        final Item it;
+        final EditText input, pct, safety, tpQty;
+        final Button modeTp, modeUnit;
+        /** Tekst koji je aplikacija sama upisala u polje stanja i tačna vrednost (u jedinici) koju predstavlja. */
+        String autoText;
+        Double autoUnits;
+        boolean inTp;
+
+        StockForm(Item it, View box) {
+            this.it = it;
+            input = box.findViewById(R.id.stock);
+            pct = box.findViewById(R.id.pct);
+            safety = box.findViewById(R.id.safety);
+            tpQty = box.findViewById(R.id.tp_qty);
+            modeTp = box.findViewById(R.id.mode_tp);
+            modeUnit = box.findViewById(R.id.mode_unit);
+        }
+
+        /** TP iz polja; prazno polje = vrednost iz tabele. */
+        Double tp() {
+            Double v = Item.parse(tpQty.getText().toString());
+            if (tpQty.getText().toString().trim().isEmpty()) v = tpTable.find(it);
+            return v != null && v > 1e-9 ? v : null;
+        }
+
+        /** Stanje u jedinici iz izveštaja; null za prazno ili neispravno polje. */
+        Double stockUnits() {
+            String text = input.getText().toString();
+            if (autoText != null && text.equals(autoText)) return autoUnits;
+            Double v = Calc.eval(text);
+            if (v == null) return null;
+            Double tp = tp();
+            return inTp && tp != null ? v * tp : v;
+        }
+
+        boolean stockInvalid() {
+            String text = input.getText().toString();
+            return !text.trim().isEmpty() && !(autoText != null && text.equals(autoText)) && Calc.eval(text) == null;
+        }
+
+        /** Upisuje stanje u polje u trenutnom režimu (TP ili jedinica). */
+        void showStock(Double units) {
+            Double tp = tp();
+            String text = units == null ? "" : Item.format(inTp && tp != null ? units / tp : units);
+            autoText = text;
+            autoUnits = units;
+            input.setText(text);
+            input.setSelection(text.length());
+        }
+
+        void setMode(boolean tpMode) {
+            Double units = stockUnits();
+            boolean wasInvalid = stockInvalid();
+            inTp = tpMode && tp() != null;
+            if (!wasInvalid) showStock(units);
+            styleModes();
+        }
+
+        void styleModes() {
+            boolean hasTp = tp() != null;
+            modeTp.setEnabled(hasTp);
+            modeTp.setAlpha(hasTp ? 1f : 0.4f);
+            int on = getColor(R.color.yellow);
+            int off = getColor(R.color.mode_off);
+            modeTp.setBackgroundTintList(ColorStateList.valueOf(inTp ? on : off));
+            modeUnit.setBackgroundTintList(ColorStateList.valueOf(inTp ? off : on));
+        }
+
+        /** Proverava i čuva unos; vraća false ako neko polje nije ispravno. */
+        boolean save() {
+            if (stockInvalid()) {
+                input.setError(getString(R.string.calc_invalid));
+                return false;
+            }
+            Double s = stockUnits();
+            if (s != null && s < -1e-9) {
+                input.setError(getString(R.string.invalid_number));
+                return false;
+            }
+            String pctText = pct.getText().toString();
+            Double p = Item.parse(pctText);
+            if ((p == null && !pctText.trim().isEmpty()) || (p != null && p < -100)) {
+                pct.setError(getString(R.string.invalid_percent));
+                return false;
+            }
+            String safetyText = safety.getText().toString();
+            Double ss = Calc.eval(safetyText);
+            if ((ss == null && !safetyText.trim().isEmpty()) || (ss != null && ss < 0)) {
+                safety.setError(getString(R.string.invalid_number));
+                return false;
+            }
+            String tpText = tpQty.getText().toString();
+            Double tpv = Item.parse(tpText);
+            if ((tpv == null && !tpText.trim().isEmpty()) || (tpv != null && tpv <= 0)) {
+                tpQty.setError(getString(R.string.invalid_number));
+                return false;
+            }
+            Double auto = tpTable.find(it);
+            if (tpv == null) {
+                it.tp = auto;
+                it.tpManual = false;
+            } else {
+                it.tp = tpv;
+                it.tpManual = auto == null || Math.abs(auto - tpv) > 1e-9;
+            }
+            it.stock = s == null ? null : Math.max(0, s);
+            it.percent = p == null ? 0 : p;
+            it.safety = ss == null ? 0 : ss;
+            if (it.hasTp()) data.countInTp = inTp;
+            Storage.save(MainActivity.this, data);
+            adapter.refresh();
+            updateSummary();
+            return true;
+        }
+    }
+
     private void showStockDialog(int position) {
         if (position < 0 || position >= adapter.getCount()) return;
         Item it = adapter.getItem(position);
         String unit = it.unit.isEmpty() ? "" : " " + it.unit;
+        String unitName = it.unit.isEmpty() ? "-" : it.unit;
 
         View box = getLayoutInflater().inflate(R.layout.dialog_item, null);
+        StockForm f = new StockForm(it, box);
         TextView info = box.findViewById(R.id.info);
         TextView neededView = box.findViewById(R.id.needed);
+        TextView neededTpView = box.findViewById(R.id.needed_tp);
         TextView orderView = box.findViewById(R.id.to_order);
+        TextView orderSub = box.findViewById(R.id.to_order_sub);
         TextView neededDetail = box.findViewById(R.id.needed_detail);
-        EditText input = box.findViewById(R.id.stock);
-        EditText pct = box.findViewById(R.id.pct);
-        EditText safety = box.findViewById(R.id.safety);
+        TextView stockLabel = box.findViewById(R.id.stock_label);
+        TextView stockCalc = box.findViewById(R.id.stock_calc);
         TextView safetyLabel = box.findViewById(R.id.safety_label);
+        TextView tpLabel = box.findViewById(R.id.tp_label);
+        TextView tpHint = box.findViewById(R.id.tp_hint);
+        EditText input = f.input;
 
         String infoText = getString(R.string.dialog_usage, Item.format(it.usage) + unit);
         if (!it.code.isEmpty()) infoText = getString(R.string.dialog_code, it.code) + "   •   " + infoText;
         info.setText(infoText);
-        safetyLabel.setText(getString(R.string.label_safety, it.unit.isEmpty() ? "-" : it.unit));
-        if (it.hasStock()) input.setText(Item.format(it.stock));
-        if (it.hasPercent()) pct.setText(Item.format(it.percent).replace(',', '.'));
-        if (it.hasSafety()) safety.setText(Item.format(it.safety));
+        safetyLabel.setText(getString(R.string.label_safety, unitName));
+        tpLabel.setText(getString(R.string.label_tp, unitName));
+        f.modeUnit.setText(unitName);
+        if (it.hasTp()) f.tpQty.setText(Item.format(it.tp));
+        if (it.hasPercent()) f.pct.setText(Item.format(it.percent).replace(',', '.'));
+        if (it.hasSafety()) f.safety.setText(Item.format(it.safety));
+        f.inTp = data.countInTp && it.hasTp();
+        f.showStock(it.stock);
+        f.styleModes();
 
         // Korekcija: dugmad -10 / +10
         Button minus = box.findViewById(R.id.pct_minus);
         Button plus = box.findViewById(R.id.pct_plus);
         View.OnClickListener step = v -> {
-            Double cur = Item.parse(pct.getText().toString());
+            Double cur = Item.parse(f.pct.getText().toString());
             double next = (cur == null ? 0 : cur) + (v == plus ? 10 : -10);
             if (next < -100) next = -100;
-            pct.setText(Math.abs(next) < 1e-9 ? "" : Item.format(next).replace(',', '.'));
+            f.pct.setText(Math.abs(next) < 1e-9 ? "" : Item.format(next).replace(',', '.'));
         };
         minus.setOnClickListener(step);
         plus.setOnClickListener(step);
 
         // Rezultat na vrhu se racuna dok se kuca.
         Runnable updatePreview = () -> {
-            Double s = Item.parse(input.getText().toString());
-            Double p = Item.parse(pct.getText().toString());
-            Double ss = Item.parse(safety.getText().toString());
+            Double tp = f.tp();
+            if (f.inTp && tp == null) f.inTp = false;
+            f.styleModes();
+            stockLabel.setText(f.inTp ? getString(R.string.label_stock_tp) : getString(R.string.label_stock_unit, unitName));
+            tpHint.setText(!f.tpQty.getText().toString().trim().isEmpty()
+                    ? (tpTable.find(it) != null && tp != null && Math.abs(tpTable.find(it) - tp) < 1e-9
+                        ? getString(R.string.tp_hint_auto) : getString(R.string.tp_hint_manual))
+                    : getString(R.string.tp_hint_none, unitName));
+
+            Double s = f.stockUnits();
+            Double p = Item.parse(f.pct.getText().toString());
+            Double ss = Calc.eval(f.safety.getText().toString());
             Item tmp = new Item(it.code, it.name, it.unit, it.usage, s);
             tmp.percent = p == null ? 0 : Math.max(-100, p);
             tmp.safety = ss == null ? 0 : Math.max(0, ss);
+            tmp.tp = tp;
+
+            // Prikaz pretvaranja i rezultata računa ispod polja stanja.
+            String text = input.getText().toString();
+            if (f.stockInvalid()) {
+                stockCalc.setText(getString(R.string.calc_invalid));
+                stockCalc.setTextColor(getColor(R.color.shortage));
+                stockCalc.setVisibility(View.VISIBLE);
+            } else if (s != null && (f.inTp || Calc.isExpression(text) || tp != null)) {
+                StringBuilder sb = new StringBuilder();
+                if (Calc.isExpression(text)) {
+                    sb.append(getString(R.string.calc_equals, Item.format(f.inTp ? s / tp : s)
+                            + (f.inTp ? " TP" : unit)));
+                }
+                if (f.inTp) sb.append(sb.length() > 0 ? "  →  " : "= ").append(Item.format(s)).append(unit);
+                else if (tp != null) sb.append(sb.length() > 0 ? "  →  " : "= ")
+                        .append(getString(R.string.tp_amount, Item.format(s / tp)));
+                stockCalc.setText(sb);
+                stockCalc.setTextColor(getColor(R.color.primary));
+                stockCalc.setVisibility(View.VISIBLE);
+            } else {
+                stockCalc.setVisibility(View.GONE);
+            }
+
             neededView.setText(Item.format(tmp.needed()) + unit);
-            orderView.setText(s == null ? "—" : Item.format(tmp.toOrder()) + unit);
+            if (tmp.hasTp()) {
+                neededTpView.setText(getString(R.string.needed_tp, Item.format(tmp.toTp(tmp.needed()))));
+                neededTpView.setVisibility(View.VISIBLE);
+            } else {
+                neededTpView.setVisibility(View.GONE);
+            }
+            if (s == null) {
+                orderView.setText("—");
+                orderSub.setVisibility(View.GONE);
+            } else if (tmp.hasTp()) {
+                orderView.setText(getString(R.string.tp_amount, Item.format(tmp.toOrderTp())));
+                orderSub.setText(getString(R.string.order_tp_sub, Item.format(tmp.toOrderTpQty()) + unit,
+                        Item.format(tmp.toOrder()) + unit));
+                orderSub.setVisibility(View.VISIBLE);
+            } else {
+                orderView.setText(Item.format(tmp.toOrder()) + unit);
+                orderSub.setVisibility(View.GONE);
+            }
             StringBuilder why = new StringBuilder(getString(R.string.needed_detail, Item.format(it.usage)));
             if (tmp.hasPercent()) why.append(' ').append(Item.formatPercent(tmp.percent));
             if (tmp.hasSafety()) why.append("  + ").append(getString(R.string.row_safety, Item.format(tmp.safety)));
@@ -288,8 +517,46 @@ public class MainActivity extends Activity {
             @Override public void afterTextChanged(Editable s) { updatePreview.run(); }
         };
         input.addTextChangedListener(watcher);
-        pct.addTextChangedListener(watcher);
-        safety.addTextChangedListener(watcher);
+        f.pct.addTextChangedListener(watcher);
+        f.safety.addTextChangedListener(watcher);
+        f.tpQty.addTextChangedListener(new TextWatcher() {
+            @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+            @Override public void afterTextChanged(Editable s) {
+                // Nova količina u TP: broj TP iz polja stanja se ponovo preračunava.
+                f.autoText = null;
+                updatePreview.run();
+            }
+        });
+
+        f.modeTp.setOnClickListener(v -> { f.setMode(true); updatePreview.run(); input.requestFocus(); });
+        f.modeUnit.setOnClickListener(v -> { f.setMode(false); updatePreview.run(); input.requestFocus(); });
+
+        // Mini kalkulator: operacije se upisuju u polje stanja, "=" upisuje rezultat.
+        int[] opIds = {R.id.calc_plus, R.id.calc_minus, R.id.calc_times, R.id.calc_div, R.id.calc_open, R.id.calc_close};
+        String[] ops = {"+", "-", "*", "/", "(", ")"};
+        for (int i = 0; i < opIds.length; i++) {
+            String op = ops[i];
+            box.findViewById(opIds[i]).setOnClickListener(v -> insertAtCursor(input, op));
+        }
+        box.findViewById(R.id.calc_eq).setOnClickListener(v -> {
+            Double r = Calc.eval(input.getText().toString());
+            if (r == null) {
+                if (!input.getText().toString().trim().isEmpty()) input.setError(getString(R.string.calc_invalid));
+                return;
+            }
+            String t = Item.format(r);
+            input.setText(t);
+            input.setSelection(t.length());
+        });
+        box.findViewById(R.id.calc_back).setOnClickListener(v -> {
+            Editable e = input.getText();
+            int a = Math.min(input.getSelectionStart(), input.getSelectionEnd());
+            int b = Math.max(input.getSelectionStart(), input.getSelectionEnd());
+            if (a < 0) a = b = e.length();
+            if (a != b) e.delete(a, b);
+            else if (a > 0) e.delete(a - 1, a);
+        });
         updatePreview.run();
 
         AlertDialog[] holder = new AlertDialog[1];
@@ -301,7 +568,7 @@ public class MainActivity extends Activity {
             Button link = box.findViewById(R.id.link);
             link.setText(data.isLinked(it) ? R.string.link_short : R.string.link_warehouse_short);
             link.setOnClickListener(v -> {
-                if (!saveStock(it, input, pct, safety)) return;
+                if (!f.save()) return;
                 holder[0].dismiss();
                 showLinkPicker(it, () -> {
                     int idx = indexOf(it);
@@ -324,11 +591,11 @@ public class MainActivity extends Activity {
 
         dialog.setOnShowListener(d -> {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
-                if (saveStock(it, input, pct, safety)) dialog.dismiss();
+                if (f.save()) dialog.dismiss();
             });
             if (hasNext) {
                 dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
-                    if (saveStock(it, input, pct, safety)) {
+                    if (f.save()) {
                         dialog.dismiss();
                         // Ako je artikal nestao iz filtera "samo za poručivanje", sledeći je na istoj poziciji.
                         int idx = indexOf(it);
@@ -338,6 +605,7 @@ public class MainActivity extends Activity {
                 });
             }
             input.requestFocus();
+            input.selectAll();
         });
         input.setOnEditorActionListener((v, actionId, event) -> {
             if (actionId == EditorInfo.IME_ACTION_NEXT || actionId == EditorInfo.IME_ACTION_DONE) {
@@ -353,6 +621,16 @@ public class MainActivity extends Activity {
                     | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
         }
         dialog.show();
+    }
+
+    /** Upisuje znak računske operacije na mesto kursora (ako je ceo broj označen, dodaje ga na kraj). */
+    private static void insertAtCursor(EditText input, String op) {
+        Editable e = input.getText();
+        int a = Math.min(input.getSelectionStart(), input.getSelectionEnd());
+        int b = Math.max(input.getSelectionStart(), input.getSelectionEnd());
+        if (a < 0 || (a == 0 && b == e.length() && b > 0)) a = b = e.length();
+        e.replace(a, b, op);
+        input.setSelection(a + op.length());
     }
 
     // ---------- Povezivanje sa magacinom ----------
@@ -459,38 +737,6 @@ public class MainActivity extends Activity {
         return -1;
     }
 
-    private boolean saveStock(Item it, EditText input, EditText pct, EditText safety) {
-        String text = input.getText().toString();
-        Double s = Item.parse(text);
-        if (s == null && !text.trim().isEmpty()) {
-            input.setError(getString(R.string.invalid_number));
-            return false;
-        }
-        if (s != null && s < 0) {
-            input.setError(getString(R.string.invalid_number));
-            return false;
-        }
-        String pctText = pct.getText().toString();
-        Double p = Item.parse(pctText);
-        if ((p == null && !pctText.trim().isEmpty()) || (p != null && p < -100)) {
-            pct.setError(getString(R.string.invalid_percent));
-            return false;
-        }
-        String safetyText = safety.getText().toString();
-        Double ss = Item.parse(safetyText);
-        if ((ss == null && !safetyText.trim().isEmpty()) || (ss != null && ss < 0)) {
-            safety.setError(getString(R.string.invalid_number));
-            return false;
-        }
-        it.stock = s;
-        it.percent = p == null ? 0 : p;
-        it.safety = ss == null ? 0 : ss;
-        Storage.save(this, data);
-        adapter.refresh();
-        updateSummary();
-        return true;
-    }
-
     // ---------- Pregled ----------
 
     private void updateSummary() {
@@ -516,6 +762,8 @@ public class MainActivity extends Activity {
         }
         StringBuilder src = new StringBuilder();
         if (data.source != null && !data.source.isEmpty()) src.append(data.source);
+        if (src.length() > 0) src.append("  •  ");
+        src.append(getString(R.string.summary_tp, data.tpCount(), data.items.size()));
         if (data.hasWarehouse()) {
             if (src.length() > 0) src.append("\n");
             src.append(data.warehouseSource).append("  •  ")
@@ -578,8 +826,16 @@ public class MainActivity extends Activity {
             double o = it.toOrder();
             if (o <= 0) continue;
             if (!it.code.isEmpty()) sb.append(it.code).append("  ");
-            sb.append(it.name.trim()).append(" – ").append(Item.format(o));
-            if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
+            sb.append(it.name.trim()).append(" – ");
+            if (it.hasTp()) {
+                sb.append(getString(R.string.tp_amount, Item.format(it.toOrderTp()))).append(" (")
+                        .append(Item.format(it.toOrderTpQty()));
+                if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
+                sb.append(')');
+            } else {
+                sb.append(Item.format(o));
+                if (!it.unit.isEmpty()) sb.append(' ').append(it.unit);
+            }
             if (it.hasPercent()) sb.append(" (").append(Item.formatPercent(it.percent)).append(')');
             if (data.shortage(it)) {
                 sb.append("  ⚠ ").append(getString(R.string.share_shortage,

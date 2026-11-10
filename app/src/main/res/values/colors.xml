@@ -15,4 +15,5 @@
     <color name="summary_bg">#FFDA1A</color>
     <color name="list_bg">#F5F8FC</color>
     <color name="icon_bg">#0058A3</color>
+    <color name="mode_off">#E3E9F1</color>
 </resources>

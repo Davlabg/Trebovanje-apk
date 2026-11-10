@@ -19,10 +19,12 @@ public final class XlsxWriter {
         if (wh) {
             rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Korekcija %",
                     "Safety stock", "Potrebno", "Stanje", "Poručiti",
+                    "Kol. u TP", "Stanje (TP)", "Poručiti (TP)", "Poručiti po TP (kol.)",
                     "Magacin (raspoloživo)", "Jed. mere magacin", "Šifre magacina", "Napomena"));
         } else {
             rows.append(row(r++, true, "Šifra", "Artikal", "Jed. mere", "Nedeljna prodaja", "Korekcija %",
-                    "Safety stock", "Potrebno", "Stanje", "Poručiti"));
+                    "Safety stock", "Potrebno", "Stanje", "Poručiti",
+                    "Kol. u TP", "Stanje (TP)", "Poručiti (TP)", "Poručiti po TP (kol.)"));
         }
         for (Item it : data.items) {
             double order = it.toOrder();
@@ -36,21 +38,25 @@ public final class XlsxWriter {
                     .append(it.hasSafety() ? numCell("F" + r, it.safety) : "")
                     .append(numCell("G" + r, round2(it.needed())))
                     .append(it.stock == null ? "" : numCell("H" + r, it.stock))
-                    .append(it.stock == null ? "" : numCell("I" + r, order));
+                    .append(it.stock == null ? "" : numCell("I" + r, order))
+                    .append(it.hasTp() ? numCell("J" + r, it.tp) : "")
+                    .append(it.hasTp() && it.stock != null ? numCell("K" + r, round2(it.toTp(it.stock))) : "")
+                    .append(it.hasTp() && it.stock != null ? numCell("L" + r, it.toOrderTp()) : "")
+                    .append(it.hasTp() && it.stock != null ? numCell("M" + r, round2(it.toOrderTpQty())) : "");
             if (wh) {
                 List<Warehouse.Article> linked = data.articlesFor(it);
                 if (linked.isEmpty()) {
-                    rows.append(strCell("M" + r, "Nije povezano sa magacinom", 0));
+                    rows.append(strCell("Q" + r, "Nije povezano sa magacinom", 0));
                 } else {
                     StringBuilder codes = new StringBuilder();
                     for (Warehouse.Article a : linked) {
                         if (codes.length() > 0) codes.append(", ");
                         codes.append(a.code);
                     }
-                    rows.append(numCell("J" + r, data.availableFor(it)))
-                            .append(strCell("K" + r, data.unitFor(it), 0))
-                            .append(strCell("L" + r, codes.toString(), 0));
-                    if (data.shortage(it)) rows.append(strCell("M" + r, "Nema dovoljno u magacinu", 1));
+                    rows.append(numCell("N" + r, data.availableFor(it)))
+                            .append(strCell("O" + r, data.unitFor(it), 0))
+                            .append(strCell("P" + r, codes.toString(), 0));
+                    if (data.shortage(it)) rows.append(strCell("Q" + r, "Nema dovoljno u magacinu", 1));
                 }
             }
             rows.append("</row>");
@@ -63,9 +69,9 @@ public final class XlsxWriter {
                 + "<cols><col min=\"1\" max=\"1\" width=\"13\" customWidth=\"1\"/>"
                 + "<col min=\"2\" max=\"2\" width=\"34\" customWidth=\"1\"/>"
                 + "<col min=\"3\" max=\"3\" width=\"10\" customWidth=\"1\"/>"
-                + "<col min=\"4\" max=\"11\" width=\"15\" customWidth=\"1\"/>"
-                + "<col min=\"12\" max=\"12\" width=\"20\" customWidth=\"1\"/>"
-                + "<col min=\"13\" max=\"13\" width=\"30\" customWidth=\"1\"/></cols>"
+                + "<col min=\"4\" max=\"15\" width=\"15\" customWidth=\"1\"/>"
+                + "<col min=\"16\" max=\"16\" width=\"20\" customWidth=\"1\"/>"
+                + "<col min=\"17\" max=\"17\" width=\"30\" customWidth=\"1\"/></cols>"
                 + "<sheetData>" + rows + "</sheetData></worksheet>";
 
         try (ZipOutputStream zip = new ZipOutputStream(out)) {

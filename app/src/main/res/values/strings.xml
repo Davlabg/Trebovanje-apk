@@ -63,7 +63,7 @@
     <string name="clear_confirm">Obrisati sva uneta stanja? Lista artikala i prodaja ostaju.</string>
     <string name="clear_yes">Obriši</string>
 
-    <string name="unknown_file">Fajl nije prepoznat. Očekuje se izveštaj o potrošnji (kolone Item i Usage) ili stanje magacina (kolone NazivArtikla, NaStanju/Količina, JedinicaMere).</string>
+    <string name="unknown_file">Fajl nije prepoznat. Očekuje se izveštaj o potrošnji (kolone Item i Usage), stanje magacina (kolone NazivArtikla, NaStanju/Količina, JedinicaMere) ili tabela količina u TP (kolone Ime proizvoda i Kolicina u TP).</string>
     <string name="warehouse_title">Stanje magacina</string>
     <string name="warehouse_imported">Učitano artikala iz magacina: %1$d</string>
     <string name="warehouse_linked">Automatski povezano: %1$d\nUkupno povezano: %2$d od %3$d\n\nOstale artikle povežite tako što ih dodirnete i izaberete „Poveži sa magacinom”.</string>
@@ -80,4 +80,26 @@
     <string name="wh_codes">" (%1$d šifre)"</string>
     <string name="unlink">Ukloni vezu</string>
     <string name="share_shortage">magacin ima samo %1$s %2$s</string>
+
+    <!-- Količina u TP -->
+    <string name="tp">TP</string>
+    <string name="label_count_in">Popis u:</string>
+    <string name="label_stock_tp">Stanje (broj TP)</string>
+    <string name="label_stock_unit">Stanje (%1$s)</string>
+    <string name="label_tp">Količina u 1 TP (%1$s)</string>
+    <string name="tp_hint_auto">Iz tabele „Količina u TP”. Možete je promeniti za ovaj artikal.</string>
+    <string name="tp_hint_manual">Ručno uneto za ovaj artikal (obrišite polje da se vrati vrednost iz tabele).</string>
+    <string name="tp_hint_none">Artikal nije pronađen u tabeli „Količina u TP”. Unesite koliko %1$s ima u jednom TP.</string>
+    <string name="calc_equals">= %1$s</string>
+    <string name="calc_invalid">Račun nije ispravan</string>
+    <string name="tp_amount">%1$s TP</string>
+    <string name="needed_tp">≈ %1$s TP</string>
+    <string name="order_tp_sub">= %1$s (treba %2$s)</string>
+    <string name="row_tp">1 TP = %1$s</string>
+    <string name="action_import_tp">Uvezi količine u TP (Excel)</string>
+    <string name="action_tp_builtin">Vrati ugrađenu tabelu TP</string>
+    <string name="tp_title">Količina u TP</string>
+    <string name="tp_imported">Učitano artikala iz tabele TP: %1$d\nPovezano sa Usage listom: %2$d od %3$d</string>
+    <string name="tp_builtin_done">Vraćena ugrađena tabela TP (%1$d artikala).\nPovezano sa Usage listom: %2$d od %3$d</string>
+    <string name="summary_tp">TP: %1$d / %2$d</string>
 </resources>

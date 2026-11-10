@@ -45,8 +45,22 @@ public final class Storage {
                             o.optString("unit", ""), o.getDouble("usage"), stock);
                     item.percent = o.optDouble("percent", 0);
                     item.safety = o.optDouble("safety", 0);
+                    if (o.has("tp") && !o.isNull("tp")) item.tp = o.getDouble("tp");
+                    item.tpManual = o.optBoolean("tpManual", false);
                     data.items.add(item);
                 }
+            }
+            data.countInTp = root.optBoolean("countInTp", true);
+            data.tpSource = root.optString("tpSource", "");
+            JSONArray tpArr = root.optJSONArray("tpTable");
+            if (tpArr != null) {
+                List<TpTable.Entry> entries = new ArrayList<>();
+                for (int i = 0; i < tpArr.length(); i++) {
+                    JSONObject o = tpArr.getJSONObject(i);
+                    entries.add(new TpTable.Entry(TpTable.splitCodes(o.optString("codes", "")),
+                            o.optString("name", ""), o.getDouble("qty")));
+                }
+                data.tpCustom = entries;
             }
             data.warehouseSource = root.optString("warehouseSource", "");
             JSONArray wh = root.optJSONArray("warehouse");
@@ -102,9 +116,24 @@ public final class Storage {
                 if (it.stock != null) o.put("stock", it.stock.doubleValue());
                 if (it.hasPercent()) o.put("percent", it.percent);
                 if (it.hasSafety()) o.put("safety", it.safety);
+                if (it.tp != null) o.put("tp", it.tp.doubleValue());
+                if (it.tpManual) o.put("tpManual", true);
                 arr.put(o);
             }
             root.put("items", arr);
+            root.put("countInTp", data.countInTp);
+            root.put("tpSource", data.tpSource);
+            if (data.tpCustom != null) {
+                JSONArray tpArr = new JSONArray();
+                for (TpTable.Entry e : data.tpCustom) {
+                    JSONObject o = new JSONObject();
+                    o.put("codes", e.codeText());
+                    o.put("name", e.name);
+                    o.put("qty", e.qty);
+                    tpArr.put(o);
+                }
+                root.put("tpTable", tpArr);
+            }
             root.put("warehouseSource", data.warehouseSource);
             JSONArray wh = new JSONArray();
             for (Warehouse.Article a : data.warehouse) {

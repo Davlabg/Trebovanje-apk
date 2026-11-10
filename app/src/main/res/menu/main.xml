@@ -9,6 +9,14 @@
         android:title="@string/action_import_warehouse"
         android:showAsAction="never" />
     <item
+        android:id="@+id/action_import_tp"
+        android:title="@string/action_import_tp"
+        android:showAsAction="never" />
+    <item
+        android:id="@+id/action_tp_builtin"
+        android:title="@string/action_tp_builtin"
+        android:showAsAction="never" />
+    <item
         android:id="@+id/action_share"
         android:title="@string/action_share"
         android:showAsAction="never" />

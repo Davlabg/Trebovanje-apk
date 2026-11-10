@@ -26,6 +26,20 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
 - Jedan artikal se može povezati sa **više šifara** iz magacina (označite sve); stanja označenih šifara se sabiraju.
 - Crveno (⚠ nema dovoljno) se označava kad magacin nema ništa, ili kad su jedinice iste a u magacinu ima manje nego što treba poručiti.
 
+## Količina u TP (transportno pakovanje)
+
+- Tabela **Količina u TP** (koliko kg/kom iz Usage izveštaja ima u jednom TP) je ugrađena u aplikaciju (`app/src/main/assets/kolicina_u_tp.tsv`).
+- Artikli se povezuju sa Usage listom po **šifri artikla**, a zatim po **nazivu** (isti naziv, ili jednoznačan početak naziva).
+- Novu tabelu možete uvesti preko menija → **Uvezi količine u TP (Excel)** (kolone *Ime proizvoda*, *Kolicina u TP*, *Sifra artikla*);
+  meni → **Vrati ugrađenu tabelu TP** vraća onu iz aplikacije.
+- U prozoru artikla polje **Količina u 1 TP** može se ručno promeniti (pamti se i pri novom uvozu).
+- **Popis u TP**: dugmad *TP / kg* biraju da li se stanje upisuje u broju TP ili u jedinici iz izveštaja; aplikacija sama preračunava
+  (npr. 3 TP × 15 kg = 45 kg). Izbor se pamti.
+- **Predikcija**: Poručiti = (potrebno − stanje) / TP, zaokruženo naviše na pun TP, uz prikaz potrebne količine iz Usage-a
+  i količine koja stiže sa punim TP (npr. *2 TP = 30 kg, treba 22 kg*). U listi: veliki broj je TP, ispod je količina.
+- **Mini kalkulator** u polju stanja: + − × ÷ ( ) = ⌫, npr. `3*15+4` ili `(12+8)/2`; rezultat se vidi odmah ispod polja.
+- Excel porudžbina ima i kolone *Kol. u TP*, *Stanje (TP)*, *Poručiti (TP)*, *Poručiti po TP (kol.)*.
+
 ## Upotreba
 
 1. Meni (⋮) → **Uvezi Excel** i izaberite izveštaj (.xlsx). Stari `.xls` format treba prvo sačuvati kao `.xlsx`.

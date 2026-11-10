@@ -15,6 +15,10 @@ public class Item {
     public double percent;
     /** Safety stock: minimalna kolicina koja uvek treba da ostane, u jedinici iz izvestaja; 0 = bez. */
     public double safety;
+    /** Količina u jednom TP (transportnom pakovanju), u jedinici iz izveštaja; null = nepoznato. */
+    public Double tp;
+    /** TP je ručno unet u aplikaciji (ne menja se pri uvozu tabele TP). */
+    public boolean tpManual;
 
     public Item(String code, String name, String unit, double usage, Double stock) {
         this.code = code == null ? "" : code;
@@ -39,6 +43,33 @@ public class Item {
 
     public boolean hasSafety() {
         return safety > 1e-9;
+    }
+
+    public boolean hasTp() {
+        return tp != null && tp > 1e-9;
+    }
+
+    /** Pretvara broj TP u jedinicu iz izveštaja (npr. 3 TP x 15 kg = 45 kg). */
+    public double fromTp(double tps) {
+        return hasTp() ? tps * tp : tps;
+    }
+
+    /** Pretvara količinu iz izveštaja u broj TP (npr. 22 kg / 15 = 1,47 TP). */
+    public double toTp(double qty) {
+        return hasTp() ? qty / tp : qty;
+    }
+
+    /** Koliko TP treba poručiti: (potreba - stanje) / TP, zaokruženo naviše na pun TP. */
+    public double toOrderTp() {
+        if (stock == null || !hasTp()) return 0;
+        double diff = needed() - stock;
+        if (diff <= 1e-9) return 0;
+        return Math.ceil(diff / tp - 1e-9);
+    }
+
+    /** Količina koja stiže kad se poruče puni TP (npr. 2 TP x 15 = 30 kg). */
+    public double toOrderTpQty() {
+        return toOrderTp() * (hasTp() ? tp : 0);
     }
 
     /** Potreba za nedelju dana: nedeljna prodaja uvecana/umanjena za korekciju u procentima, plus safety stock. */
@@ -72,6 +103,8 @@ public class Item {
             Item copy = new Item(it.code, it.name, it.unit, it.usage < 0 ? -it.usage : 0, it.stock);
             copy.percent = it.percent;
             copy.safety = it.safety;
+            copy.tp = it.tp;
+            copy.tpManual = it.tpManual;
             flipped.add(copy);
         }
         return flipped;

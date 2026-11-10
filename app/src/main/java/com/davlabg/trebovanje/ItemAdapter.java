@@ -75,6 +75,7 @@ public class ItemAdapter extends BaseAdapter {
         TextView details = v.findViewById(R.id.details);
         TextView order = v.findViewById(R.id.order);
         TextView warehouse = v.findViewById(R.id.warehouse);
+        TextView orderTp = v.findViewById(R.id.order_tp);
 
         name.setText(it.name);
         String unit = it.unit.isEmpty() ? "" : " " + it.unit;
@@ -85,7 +86,9 @@ public class ItemAdapter extends BaseAdapter {
         }
         String text = ctx.getString(R.string.row_details,
                 usage,
-                it.hasStock() ? Item.format(it.stock) + unit : "—");
+                !it.hasStock() ? "—" : Item.format(it.stock) + unit
+                        + (it.hasTp() ? " (" + ctx.getString(R.string.tp_amount, Item.format(it.toTp(it.stock))) + ")" : ""));
+        if (it.hasTp()) text += "   •   " + ctx.getString(R.string.row_tp, Item.format(it.tp) + unit);
         if (it.hasSafety()) text += "   •   " + ctx.getString(R.string.row_safety, Item.format(it.safety) + unit);
         if (!it.code.isEmpty()) text = it.code + "   •   " + text;
         details.setText(text);
@@ -99,9 +102,19 @@ public class ItemAdapter extends BaseAdapter {
             warehouse.setVisibility(View.GONE);
         }
 
+        orderTp.setVisibility(View.GONE);
         if (!it.hasStock()) {
             order.setText("?");
             order.setTextColor(ctx.getColor(R.color.muted));
+        } else if (it.hasTp()) {
+            // Poručuje se u punim TP; ispod je potrebna količina iz Usage izveštaja.
+            double tps = it.toOrderTp();
+            order.setText(ctx.getString(R.string.tp_amount, Item.format(tps)));
+            order.setTextColor(ctx.getColor(tps > 0 ? R.color.order : R.color.ok));
+            if (tps > 0) {
+                orderTp.setText(Item.format(it.toOrder()) + unit);
+                orderTp.setVisibility(View.VISIBLE);
+            }
         } else {
             double o = it.toOrder();
             order.setText(Item.format(o));
