@@ -120,6 +120,8 @@ public class MainActivity extends Activity {
             exportExcel();
         } else if (id == R.id.action_share) {
             shareText();
+        } else if (id == R.id.action_mail_fetch) {
+            checkMail(true);
         } else if (id == R.id.action_mail_send) {
             sendMail();
         } else if (id == R.id.action_mail_settings) {
@@ -199,6 +201,11 @@ public class MainActivity extends Activity {
     }
 
     private void applyImport(List<Item> items, String fileName) {
+        toast(applyImportCore(items, fileName));
+    }
+
+    /** Ubacuje novi Usage izveštaj (stanja, korekcije, safety i ručni TP ostaju) i vraća poruku o uvozu. */
+    private String applyImportCore(List<Item> items, String fileName) {
         // Zadrzi vec uneta stanja za iste artikle (po sifri, a ako je nema, po nazivu).
         Map<String, Double> old = new HashMap<>();
         Map<String, Double> oldPercent = new HashMap<>();
@@ -237,20 +244,24 @@ public class MainActivity extends Activity {
         String msg = getString(R.string.imported, items.size());
         if (kept > 0) msg += "\n" + getString(R.string.kept_stock, kept);
         msg += "\n" + getString(R.string.summary_tp, withTp, items.size());
-        toast(msg);
+        return msg;
     }
 
     private void applyTpTable(List<TpTable.Entry> entries, String fileName) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.tp_title)
+                .setMessage(applyTpTableCore(entries, fileName))
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private String applyTpTableCore(List<TpTable.Entry> entries, String fileName) {
         data.tpCustom = entries;
         data.tpSource = fileName;
         tpTable = new TpTable(entries);
         int matched = tpTable.apply(data.items);
         saveAndRefresh();
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.tp_title)
-                .setMessage(getString(R.string.tp_imported, entries.size(), matched, data.items.size()))
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
+        return getString(R.string.tp_imported, entries.size(), matched, data.items.size());
     }
 
     private void restoreBuiltInTp() {
@@ -267,6 +278,14 @@ public class MainActivity extends Activity {
     }
 
     private void applyWarehouse(List<Warehouse.Article> articles, String fileName) {
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.warehouse_title)
+                .setMessage(applyWarehouseCore(articles, fileName))
+                .setPositiveButton(android.R.string.ok, null)
+                .show();
+    }
+
+    private String applyWarehouseCore(List<Warehouse.Article> articles, String fileName) {
         data.setWarehouse(articles);
         data.warehouseSource = fileName;
         int added = Warehouse.autoLink(data.items, data.warehouse, data.links);
@@ -277,11 +296,157 @@ public class MainActivity extends Activity {
         if (!data.items.isEmpty()) {
             msg += "\n" + getString(R.string.warehouse_linked, added, data.linkedCount(), data.items.size());
         }
-        new AlertDialog.Builder(this)
-                .setTitle(R.string.warehouse_title)
-                .setMessage(msg)
-                .setPositiveButton(android.R.string.ok, null)
-                .show();
+        return msg;
+    }
+
+    // ---------- Preuzimanje Excel fajlova iz mejla ----------
+
+    private boolean mailChecking;
+    private long lastMailCheck;
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Pri otvaranju aplikacije: sama proveri mejl (najviše jednom u 2 minuta).
+        if (mailPrefs().getBoolean("autoFetch", true) && !mailPrefs().getString("password", "").isEmpty()
+                && System.currentTimeMillis() - lastMailCheck > 120000) {
+            checkMail(false);
+        }
+    }
+
+    /**
+     * Preuzima nove Excel priloge iz Gmail sandučeta. Za svaku vrstu (Usage, stanje magacina, tabela TP)
+     * uzima najnoviji fajl i odmah ga ubacuje u kalkulaciju. manual = korisnik je pritisnuo dugme.
+     */
+    private void checkMail(boolean manual) {
+        if (mailChecking) return;
+        SharedPreferences sp = mailPrefs();
+        String user = sp.getString("email", DEFAULT_SENDER);
+        String pass = sp.getString("password", "");
+        if (pass.isEmpty()) {
+            if (manual) {
+                toast(getString(R.string.mail_need_password));
+                showMailSettings();
+            }
+            return;
+        }
+        mailChecking = true;
+        lastMailCheck = System.currentTimeMillis();
+        if (manual) toast(getString(R.string.fetch_checking, user));
+        long validity = sp.getLong("imapValidity", 0);
+        long lastUid = sp.getLong("imapLastUid", 0);
+        new Thread(() -> {
+            String error = null;
+            ImapFetcher.Result result = null;
+            List<Item> usage = null;
+            List<Warehouse.Article> stock = null;
+            List<TpTable.Entry> tp = null;
+            String usageName = null, stockName = null, tpName = null;
+            try {
+                result = ImapFetcher.fetch(user, pass, validity, lastUid, 30);
+                // Prilozi su od najnovijeg mejla ka starijem: prvi pronađen fajl svake vrste je najnoviji.
+                for (ImapFetcher.Attachment a : result.attachments) {
+                    String lower = a.fileName.toLowerCase(Locale.ROOT);
+                    // Porudžbine iz Nedeljka i fajlovi iz aplikacije Utrošak (isti Gmail nalog) se preskaču.
+                    if (lower.startsWith("porudzbina") || lower.startsWith("utrosak") || lower.startsWith("utrošak")) continue;
+                    List<List<Map<Integer, String>>> sheets;
+                    try {
+                        sheets = XlsxReader.readSheets(new java.io.ByteArrayInputStream(a.data));
+                    } catch (Exception e) {
+                        continue;
+                    }
+                    String label = a.fileName + (a.date.isEmpty() ? "" : "  (" + shortDate(a.date) + ")");
+                    List<Warehouse.Article> w = firstWarehouse(sheets);
+                    if (w != null) {
+                        if (stock == null) { stock = w; stockName = label; }
+                        continue;
+                    }
+                    List<TpTable.Entry> t = firstTp(sheets);
+                    if (t != null) {
+                        if (tp == null) { tp = t; tpName = label; }
+                        continue;
+                    }
+                    if (usage == null) {
+                        for (List<Map<Integer, String>> rows : sheets) {
+                            List<Item> u = XlsxReader.parseUsage(rows);
+                            if (!u.isEmpty()) { usage = u; usageName = label; break; }
+                        }
+                    }
+                }
+            } catch (SmtpSender.MailException e) {
+                error = e.getMessage();
+            } catch (Exception e) {
+                error = getString(R.string.fetch_failed_generic);
+            }
+            ImapFetcher.Result res = result;
+            String err = error;
+            List<Item> fUsage = usage;
+            List<Warehouse.Article> fStock = stock;
+            List<TpTable.Entry> fTp = tp;
+            String fUsageName = usageName, fStockName = stockName, fTpName = tpName;
+            runOnUiThread(() -> {
+                mailChecking = false;
+                if (isFinishing()) return;
+                if (err != null) {
+                    if (manual) {
+                        new AlertDialog.Builder(this)
+                                .setTitle(R.string.fetch_failed_title)
+                                .setMessage(err)
+                                .setPositiveButton(android.R.string.ok, null)
+                                .setNeutralButton(R.string.mail_settings_short, (d, w) -> showMailSettings())
+                                .show();
+                    }
+                    return;
+                }
+                mailPrefs().edit().putLong("imapValidity", res.uidValidity).putLong("imapLastUid", res.maxUid).apply();
+                StringBuilder msg = new StringBuilder();
+                // Redosled: tabela TP, pa Usage (dobija TP), pa magacin (povezuje se sa novim Usage-om).
+                if (fTp != null) {
+                    msg.append("📦 ").append(fTpName).append("\n").append(applyTpTableCore(fTp, fTpName)).append("\n\n");
+                }
+                if (fUsage != null) {
+                    msg.append("📊 ").append(fUsageName).append("\n").append(applyImportCore(fUsage, fUsageName)).append("\n\n");
+                }
+                if (fStock != null) {
+                    msg.append("🏬 ").append(fStockName).append("\n").append(applyWarehouseCore(fStock, fStockName)).append("\n\n");
+                }
+                if (msg.length() == 0) {
+                    if (manual) toast(getString(R.string.fetch_nothing));
+                    return;
+                }
+                new AlertDialog.Builder(this)
+                        .setTitle(R.string.fetch_done_title)
+                        .setMessage(msg.toString().trim())
+                        .setPositiveButton(android.R.string.ok, null)
+                        .show();
+            });
+        }).start();
+    }
+
+    private static List<Warehouse.Article> firstWarehouse(List<List<Map<Integer, String>>> sheets) {
+        for (List<Map<Integer, String>> rows : sheets) {
+            List<Warehouse.Article> w = Warehouse.parse(rows);
+            if (w != null) return w;
+        }
+        return null;
+    }
+
+    private static List<TpTable.Entry> firstTp(List<List<Map<Integer, String>>> sheets) {
+        for (List<Map<Integer, String>> rows : sheets) {
+            List<TpTable.Entry> t = TpTable.parse(rows);
+            if (t != null && !t.isEmpty()) return t;
+        }
+        return null;
+    }
+
+    /** "Tue, 11 Nov 2026 08:15:00 +0100" -> "11.11. 08:15" */
+    private static String shortDate(String rfc) {
+        try {
+            Date d = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z", Locale.US).parse(rfc.replaceAll("\\s*\\(.*\\)$", ""));
+            return new SimpleDateFormat("dd.MM. HH:mm", Locale.ROOT).format(d);
+        } catch (Exception e) {
+            return rfc;
+        }
     }
 
     private String displayName(Uri uri) {
@@ -1030,6 +1195,11 @@ public class MainActivity extends Activity {
         pass.setHint(hasPass ? R.string.mail_hint_password_saved : R.string.mail_hint_password);
         box.addView(pass);
 
+        CheckBox auto = new CheckBox(this);
+        auto.setText(R.string.mail_auto_fetch);
+        auto.setChecked(sp.getBoolean("autoFetch", true));
+        box.addView(auto);
+
         TextView help = new TextView(this);
         help.setText(R.string.mail_help);
         help.setTextColor(getColor(R.color.text_secondary));
@@ -1067,6 +1237,7 @@ public class MainActivity extends Activity {
                 }
                 SharedPreferences.Editor e = sp.edit();
                 e.putString("to", String.join(",", list));
+                e.putBoolean("autoFetch", auto.isChecked());
                 e.putString("email", f.isEmpty() ? DEFAULT_SENDER : f);
                 String p = pass.getText().toString().replaceAll("\\s+", "");
                 if (!p.isEmpty()) e.putString("password", p);

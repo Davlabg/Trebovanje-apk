@@ -47,6 +47,11 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
   (myaccount.google.com/apppasswords). Lozinka se čuva samo na telefonu. „Probni mejl” proverava da li prijava radi.
 - Dugme **Pošalji** (donja traka, ili meni → *Pošalji porudžbinu mejlom*) odmah šalje Excel porudžbinu u prilogu i
   spisak u tekstu na sve zadate adrese (smtp.gmail.com, port 465).
+- **Preuzimanje iz mejla**: pošaljite Usage izveštaj i stanje magacina (ArticlesOnStock), ili novu tabelu TP, kao Excel prilog
+  na isti Gmail nalog. Nedeljko pri otvaranju (ili meni → *Preuzmi Excel iz mejla*) proverava sanduče (imap.gmail.com, port 993,
+  ista lozinka za aplikaciju), prepoznaje vrstu fajla i najnoviji fajl svake vrste odmah ubacuje u kalkulaciju.
+  Svaki mejl se obrađuje samo jednom; gleda se poslednjih 30 dana. Uneta stanja, korekcije i safety stock ostaju.
+  Fajlovi `Porudzbina_*` i `Utrosak_*` se preskaču. Automatsko preuzimanje se isključuje u *Podešavanjima mejla*.
 - Bez upisane lozinke, dugme otvara Gmail sa upisanim primaocima, naslovom, tekstom i prilogom – ostaje samo „Pošalji”.
 
 ## Upotreba

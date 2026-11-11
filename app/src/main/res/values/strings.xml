@@ -115,7 +115,7 @@
     <string name="mail_label_password">Lozinka za aplikaciju (16 slova)</string>
     <string name="mail_hint_password">nije upisana</string>
     <string name="mail_hint_password_saved">sačuvana – upišite samo za promenu</string>
-    <string name="mail_help">Lozinku za aplikaciju napravite na myaccount.google.com/apppasswords (za nalog sa koga se šalje, potrebna je potvrda u 2 koraka). Ista lozinka kao u aplikaciji Utrošak radi i ovde. Čuva se samo na ovom telefonu.\n\nBez lozinke dugme „Pošalji” otvara Gmail sa upisanim adresama i Excel prilogom.</string>
+    <string name="mail_help">Lozinku za aplikaciju napravite na myaccount.google.com/apppasswords (za nalog sa koga se šalje, potrebna je potvrda u 2 koraka). Ista lozinka kao u aplikaciji Utrošak radi i ovde. Čuva se samo na ovom telefonu.\n\nPreuzimanje: pošaljite Usage izveštaj i stanje magacina (ArticlesOnStock) kao Excel prilog na ovaj Gmail nalog – Nedeljko ih sam preuzme i ubaci u kalkulaciju (najnoviji fajl svake vrste; uneta stanja ostaju).\n\nBez lozinke dugme „Pošalji” otvara Gmail sa upisanim adresama i Excel prilogom.</string>
     <string name="mail_test">Probni mejl</string>
     <string name="mail_test_subject">Nedeljko – probni mejl</string>
     <string name="mail_test_body">Ovo je probni mejl iz aplikacije Nedeljko. Slanje porudžbine radi.</string>
@@ -131,4 +131,13 @@
     <string name="mail_failed_generic">Slanje nije uspelo. Pokušajte ponovo.</string>
     <string name="mail_opened_app">Proverite i pritisnite „Pošalji” u mejl aplikaciji</string>
     <string name="mail_no_app">Nije pronađena mejl aplikacija</string>
+
+    <!-- Preuzimanje iz mejla -->
+    <string name="action_mail_fetch">Preuzmi Excel iz mejla</string>
+    <string name="mail_auto_fetch">Automatski preuzmi Usage i stanje magacina iz mejla pri otvaranju aplikacije</string>
+    <string name="fetch_checking">Proveravam mejl %1$s…</string>
+    <string name="fetch_nothing">Nema novih Excel fajlova (Usage, stanje magacina, TP) u mejlu</string>
+    <string name="fetch_done_title">Preuzeto iz mejla ✓</string>
+    <string name="fetch_failed_title">Preuzimanje iz mejla nije uspelo</string>
+    <string name="fetch_failed_generic">Preuzimanje nije uspelo. Pokušajte ponovo.</string>
 </resources>
