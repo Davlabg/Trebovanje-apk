@@ -31,9 +31,9 @@
     <string name="summary_linked">povezano %1$d / %2$d</string>
     <string name="needed_detail">Prodaja %1$s</string>
     <string name="only_order_short">Samo za poručivanje</string>
-    <string name="bar_import">Uvezi Excel</string>
+    <string name="bar_import">Uvezi</string>
     <string name="bar_share">Podeli</string>
-    <string name="bar_export">Sačuvaj Excel</string>
+    <string name="bar_export">Sačuvaj</string>
     <string name="stat_entered">Uneto stanje\n%1$d / %2$d</string>
     <string name="stat_order">Za poručivanje\n%1$d</string>
     <string name="stat_shortage">Nema u magacinu\n%1$d</string>
@@ -102,4 +102,33 @@
     <string name="tp_imported">Učitano artikala iz tabele TP: %1$d\nPovezano sa Usage listom: %2$d od %3$d</string>
     <string name="tp_builtin_done">Vraćena ugrađena tabela TP (%1$d artikala).\nPovezano sa Usage listom: %2$d od %3$d</string>
     <string name="summary_tp">TP: %1$d / %2$d</string>
+
+    <!-- Slanje mejlom -->
+    <string name="bar_mail">Pošalji</string>
+    <string name="action_mail_send">Pošalji porudžbinu mejlom</string>
+    <string name="action_mail_settings">Podešavanja mejla</string>
+    <string name="mail_settings_title">Slanje porudžbine mejlom</string>
+    <string name="mail_settings_short">Podešavanja</string>
+    <string name="mail_label_to">Kome se šalje (jedna adresa po redu)</string>
+    <string name="mail_hint_to">npr. nabavka@firma.rs</string>
+    <string name="mail_label_from">Gmail nalog sa koga se šalje</string>
+    <string name="mail_label_password">Lozinka za aplikaciju (16 slova)</string>
+    <string name="mail_hint_password">nije upisana</string>
+    <string name="mail_hint_password_saved">sačuvana – upišite samo za promenu</string>
+    <string name="mail_help">Lozinku za aplikaciju napravite na myaccount.google.com/apppasswords (za nalog sa koga se šalje, potrebna je potvrda u 2 koraka). Ista lozinka kao u aplikaciji Utrošak radi i ovde. Čuva se samo na ovom telefonu.\n\nBez lozinke dugme „Pošalji” otvara Gmail sa upisanim adresama i Excel prilogom.</string>
+    <string name="mail_test">Probni mejl</string>
+    <string name="mail_test_subject">Nedeljko – probni mejl</string>
+    <string name="mail_test_body">Ovo je probni mejl iz aplikacije Nedeljko. Slanje porudžbine radi.</string>
+    <string name="mail_need_password">Upišite lozinku za aplikaciju</string>
+    <string name="mail_invalid">Neispravna adresa: %1$s</string>
+    <string name="mail_saved">Podešavanja mejla su sačuvana</string>
+    <string name="mail_no_recipients">Upišite adrese na koje se šalje porudžbina</string>
+    <string name="mail_sending_title">Slanje…</string>
+    <string name="mail_sending">Šaljem porudžbinu na:\n%1$s</string>
+    <string name="mail_sent_title">Poslato ✓</string>
+    <string name="mail_sent">Porudžbina (Excel) je poslata na:\n%1$s</string>
+    <string name="mail_failed_title">Slanje nije uspelo</string>
+    <string name="mail_failed_generic">Slanje nije uspelo. Pokušajte ponovo.</string>
+    <string name="mail_opened_app">Proverite i pritisnite „Pošalji” u mejl aplikaciji</string>
+    <string name="mail_no_app">Nije pronađena mejl aplikacija</string>
 </resources>

@@ -40,6 +40,15 @@ Preko istog dugmeta (meni → **Uvezi Excel** ili **Uvezi stanje magacina**) mo�
 - **Mini kalkulator** u polju stanja: + − × ÷ ( ) = ⌫, npr. `3*15+4` ili `(12+8)/2`; rezultat se vidi odmah ispod polja.
 - Excel porudžbina ima i kolone *Kol. u TP*, *Stanje (TP)*, *Poručiti (TP)*, *Poručiti po TP (kol.)*.
 
+## Slanje porudžbine mejlom
+
+- Meni → **Podešavanja mejla**: upišite adrese na koje se šalje (jedna po redu), Gmail nalog sa koga se šalje
+  (podrazumevano `utrosak.cw.restoran@gmail.com`, isto kao u aplikaciji Utrošak) i **lozinku za aplikaciju** od 16 slova
+  (myaccount.google.com/apppasswords). Lozinka se čuva samo na telefonu. „Probni mejl” proverava da li prijava radi.
+- Dugme **Pošalji** (donja traka, ili meni → *Pošalji porudžbinu mejlom*) odmah šalje Excel porudžbinu u prilogu i
+  spisak u tekstu na sve zadate adrese (smtp.gmail.com, port 465).
+- Bez upisane lozinke, dugme otvara Gmail sa upisanim primaocima, naslovom, tekstom i prilogom – ostaje samo „Pošalji”.
+
 ## Upotreba
 
 1. Meni (⋮) → **Uvezi Excel** i izaberite izveštaj (.xlsx). Stari `.xls` format treba prvo sačuvati kao `.xlsx`.

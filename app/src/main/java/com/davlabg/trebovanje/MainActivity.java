@@ -2,7 +2,9 @@ package com.davlabg.trebovanje;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.ClipData;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.database.Cursor;
 import android.graphics.Typeface;
@@ -31,6 +33,9 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.text.SimpleDateFormat;
@@ -47,6 +52,10 @@ public class MainActivity extends Activity {
 
     private static final int REQ_IMPORT = 1;
     private static final int REQ_EXPORT = 2;
+
+    /** Gmail nalog sa koga aplikacija sama šalje porudžbinu (lozinka za aplikaciju se upisuje na telefonu). */
+    public static final String DEFAULT_SENDER = "utrosak.cw.restoran@gmail.com";
+    private static final String MAIL_PREFS = "mail";
 
     private OrderData data;
     private ItemAdapter adapter;
@@ -76,6 +85,7 @@ public class MainActivity extends Activity {
         findViewById(R.id.btn_import).setOnClickListener(v -> pickExcel());
         findViewById(R.id.btn_share).setOnClickListener(v -> shareText());
         findViewById(R.id.btn_export).setOnClickListener(v -> exportExcel());
+        findViewById(R.id.btn_mail).setOnClickListener(v -> sendMail());
 
         EditText search = findViewById(R.id.search);
         search.addTextChangedListener(new TextWatcher() {
@@ -110,6 +120,10 @@ public class MainActivity extends Activity {
             exportExcel();
         } else if (id == R.id.action_share) {
             shareText();
+        } else if (id == R.id.action_mail_send) {
+            sendMail();
+        } else if (id == R.id.action_mail_settings) {
+            showMailSettings();
         } else if (id == R.id.action_tp_builtin) {
             restoreBuiltInTp();
         } else if (id == R.id.action_clear) {
@@ -818,9 +832,8 @@ public class MainActivity extends Activity {
         }
     }
 
-    private void shareText() {
-        if (!hasOrder()) return;
-        String date = new SimpleDateFormat("dd.MM.yyyy.", Locale.ROOT).format(new Date());
+    /** Tekst porudžbine (za deljenje i za telo mejla). */
+    private String orderText(String date) {
         StringBuilder sb = new StringBuilder(getString(R.string.share_title, date)).append("\n\n");
         for (Item it : data.items) {
             double o = it.toOrder();
@@ -843,11 +856,253 @@ public class MainActivity extends Activity {
             }
             sb.append('\n');
         }
+        return sb.toString().trim();
+    }
+
+    private void shareText() {
+        if (!hasOrder()) return;
+        String date = new SimpleDateFormat("dd.MM.yyyy.", Locale.ROOT).format(new Date());
         Intent send = new Intent(Intent.ACTION_SEND);
         send.setType("text/plain");
         send.putExtra(Intent.EXTRA_SUBJECT, getString(R.string.share_title, date));
-        send.putExtra(Intent.EXTRA_TEXT, sb.toString().trim());
+        send.putExtra(Intent.EXTRA_TEXT, orderText(date));
         startActivity(Intent.createChooser(send, getString(R.string.action_share)));
+    }
+
+    // ---------- Slanje mejlom ----------
+
+    private SharedPreferences mailPrefs() {
+        return getSharedPreferences(MAIL_PREFS, MODE_PRIVATE);
+    }
+
+    /** Adrese primalaca iz podešavanja (razdvojene zarezom, tačka-zarezom, razmakom ili novim redom). */
+    private List<String> recipients() {
+        List<String> out = new ArrayList<>();
+        for (String r : mailPrefs().getString("to", "").split("[,;\\s]+")) {
+            if (!r.trim().isEmpty()) out.add(r.trim());
+        }
+        return out;
+    }
+
+    private static boolean validEmail(String e) {
+        return e.matches("[^@\\s]+@[^@\\s]+\\.[^@\\s]+");
+    }
+
+    /** Jedno dugme: Excel porudžbina ide odmah na zadate adrese preko Gmail naloga. */
+    private void sendMail() {
+        if (!hasOrder()) return;
+        if (recipients().isEmpty()) {
+            toast(getString(R.string.mail_no_recipients));
+            showMailSettings();
+            return;
+        }
+        String date = new SimpleDateFormat("dd.MM.yyyy.", Locale.ROOT).format(new Date());
+        String fileName = "Porudzbina_" + new SimpleDateFormat("yyyy-MM-dd", Locale.ROOT).format(new Date()) + ".xlsx";
+        String subject = getString(R.string.share_title, date);
+        String body = orderText(date);
+        byte[] xlsx;
+        try {
+            ByteArrayOutputStream bos = new ByteArrayOutputStream();
+            XlsxWriter.writeOrder(bos, data, true);
+            xlsx = bos.toByteArray();
+        } catch (Exception e) {
+            toast(getString(R.string.save_failed) + ": " + e.getMessage());
+            return;
+        }
+        String pass = mailPrefs().getString("password", "");
+        if (pass.isEmpty()) {
+            // Bez lozinke za aplikaciju: otvara se Gmail sa svim upisanim, ostaje samo "Pošalji".
+            openMailApp(recipients(), subject, body, fileName, xlsx);
+            return;
+        }
+        sendViaGmail(recipients(), subject, body, fileName, xlsx, null);
+    }
+
+    /** Šalje u pozadini preko smtp.gmail.com; posle uspeha poziva done (ako nije null). */
+    private void sendViaGmail(List<String> to, String subject, String body, String fileName, byte[] xlsx, Runnable done) {
+        SharedPreferences sp = mailPrefs();
+        String user = sp.getString("email", DEFAULT_SENDER);
+        String pass = sp.getString("password", "");
+        AlertDialog progress = new AlertDialog.Builder(this)
+                .setTitle(R.string.mail_sending_title)
+                .setMessage(getString(R.string.mail_sending, String.join(", ", to)))
+                .setCancelable(false)
+                .show();
+        new Thread(() -> {
+            String error = null;
+            try {
+                SmtpSender.send(user, pass, to, subject, body, fileName, xlsx);
+            } catch (SmtpSender.MailException e) {
+                error = e.getMessage();
+            } catch (Exception e) {
+                error = getString(R.string.mail_failed_generic);
+            }
+            String err = error;
+            runOnUiThread(() -> {
+                progress.dismiss();
+                if (err == null) {
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.mail_sent_title)
+                            .setMessage(getString(R.string.mail_sent, String.join("\n", to)))
+                            .setPositiveButton(android.R.string.ok, null)
+                            .show();
+                    if (done != null) done.run();
+                } else {
+                    new AlertDialog.Builder(this)
+                            .setTitle(R.string.mail_failed_title)
+                            .setMessage(err)
+                            .setPositiveButton(android.R.string.ok, null)
+                            .setNeutralButton(R.string.mail_settings_short, (d, w) -> showMailSettings())
+                            .show();
+                }
+            });
+        }).start();
+    }
+
+    /** Otvara mejl aplikaciju sa primaocima, naslovom, tekstom i Excel prilogom. */
+    private void openMailApp(List<String> to, String subject, String body, String fileName, byte[] xlsx) {
+        Uri uri;
+        try {
+            File dir = AttachmentProvider.dir(this);
+            File[] old = dir.listFiles();
+            if (old != null) for (File f : old) f.delete();
+            File f = new File(dir, fileName);
+            try (FileOutputStream out = new FileOutputStream(f)) {
+                out.write(xlsx);
+            }
+            uri = Uri.parse("content://" + AttachmentProvider.AUTHORITY + "/" + Uri.encode(fileName));
+        } catch (Exception e) {
+            toast(getString(R.string.save_failed) + ": " + e.getMessage());
+            return;
+        }
+        Intent send = new Intent(Intent.ACTION_SEND);
+        send.setType(AttachmentProvider.MIME_XLSX);
+        send.putExtra(Intent.EXTRA_EMAIL, to.toArray(new String[0]));
+        send.putExtra(Intent.EXTRA_SUBJECT, subject);
+        send.putExtra(Intent.EXTRA_TEXT, body);
+        send.putExtra(Intent.EXTRA_STREAM, uri);
+        send.setClipData(ClipData.newRawUri(fileName, uri));
+        send.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        send.setSelector(new Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:")));
+        try {
+            startActivity(send);
+            toast(getString(R.string.mail_opened_app));
+        } catch (Exception e) {
+            send.setSelector(null);
+            try {
+                startActivity(Intent.createChooser(send, subject));
+            } catch (Exception e2) {
+                toast(getString(R.string.mail_no_app));
+            }
+        }
+    }
+
+    /** Podešavanja: nalog sa koga se šalje, lozinka za aplikaciju i adrese primalaca. */
+    private void showMailSettings() {
+        SharedPreferences sp = mailPrefs();
+        int pad = (int) (20 * getResources().getDisplayMetrics().density);
+        LinearLayout box = new LinearLayout(this);
+        box.setOrientation(LinearLayout.VERTICAL);
+        box.setPadding(pad, pad / 2, pad, 0);
+
+        TextView l1 = label(R.string.mail_label_to);
+        box.addView(l1);
+        EditText to = new EditText(this);
+        to.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS
+                | InputType.TYPE_TEXT_FLAG_MULTI_LINE);
+        to.setMinLines(2);
+        to.setHint(R.string.mail_hint_to);
+        to.setText(String.join("\n", recipients()));
+        box.addView(to);
+
+        box.addView(label(R.string.mail_label_from));
+        EditText from = new EditText(this);
+        from.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS);
+        from.setSingleLine(true);
+        from.setText(sp.getString("email", DEFAULT_SENDER));
+        box.addView(from);
+
+        box.addView(label(R.string.mail_label_password));
+        EditText pass = new EditText(this);
+        pass.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
+        pass.setSingleLine(true);
+        boolean hasPass = !sp.getString("password", "").isEmpty();
+        pass.setHint(hasPass ? R.string.mail_hint_password_saved : R.string.mail_hint_password);
+        box.addView(pass);
+
+        TextView help = new TextView(this);
+        help.setText(R.string.mail_help);
+        help.setTextColor(getColor(R.color.text_secondary));
+        help.setTextSize(12);
+        help.setPadding(0, pad / 3, 0, pad / 3);
+        box.addView(help);
+
+        android.widget.ScrollView scroll = new android.widget.ScrollView(this);
+        scroll.addView(box);
+
+        AlertDialog dialog = new AlertDialog.Builder(this)
+                .setTitle(R.string.mail_settings_title)
+                .setView(scroll)
+                .setPositiveButton(R.string.save, null)
+                .setNegativeButton(R.string.cancel, null)
+                .setNeutralButton(R.string.mail_test, null)
+                .create();
+        dialog.setOnShowListener(d -> {
+            // Vraća true ako je sve ispravno i sačuvano.
+            java.util.function.BooleanSupplier save = () -> {
+                List<String> list = new ArrayList<>();
+                for (String r : to.getText().toString().split("[,;\\s]+")) {
+                    String t = r.trim();
+                    if (t.isEmpty()) continue;
+                    if (!validEmail(t)) {
+                        to.setError(getString(R.string.mail_invalid, t));
+                        return false;
+                    }
+                    if (!list.contains(t)) list.add(t);
+                }
+                String f = from.getText().toString().trim();
+                if (!f.isEmpty() && !validEmail(f)) {
+                    from.setError(getString(R.string.mail_invalid, f));
+                    return false;
+                }
+                SharedPreferences.Editor e = sp.edit();
+                e.putString("to", String.join(",", list));
+                e.putString("email", f.isEmpty() ? DEFAULT_SENDER : f);
+                String p = pass.getText().toString().replaceAll("\\s+", "");
+                if (!p.isEmpty()) e.putString("password", p);
+                e.apply();
+                return true;
+            };
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener(v -> {
+                if (save.getAsBoolean()) {
+                    dialog.dismiss();
+                    toast(getString(R.string.mail_saved));
+                }
+            });
+            dialog.getButton(AlertDialog.BUTTON_NEUTRAL).setOnClickListener(v -> {
+                if (!save.getAsBoolean()) return;
+                if (mailPrefs().getString("password", "").isEmpty()) {
+                    pass.setError(getString(R.string.mail_need_password));
+                    return;
+                }
+                List<String> rcpt = recipients();
+                if (rcpt.isEmpty()) rcpt.add(mailPrefs().getString("email", DEFAULT_SENDER));
+                dialog.dismiss();
+                sendViaGmail(rcpt, getString(R.string.mail_test_subject), getString(R.string.mail_test_body),
+                        null, null, null);
+            });
+        });
+        dialog.show();
+    }
+
+    private TextView label(int text) {
+        TextView t = new TextView(this);
+        t.setText(text);
+        t.setTextColor(getColor(R.color.navy));
+        t.setTextSize(14);
+        t.setTypeface(null, Typeface.BOLD);
+        t.setPadding(0, (int) (10 * getResources().getDisplayMetrics().density), 0, 0);
+        return t;
     }
 
     private void confirmClear() {
